@@ -1,0 +1,19 @@
+[package]
+name = "classicube-chat-bubbles-plugin"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+bincode = "1"
+classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers.git", branch = "cpe-plugin-messages" }
+classicube-relay = { git = "https://github.com/SpiralP/rust-classicube-relay.git" }
+classicube-sys = { git = "https://github.com/SpiralP/rust-classicube-sys.git", branch = "cpe-plugin-messages" }
+serde = { version = "1", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
+zstd = "0.9"
