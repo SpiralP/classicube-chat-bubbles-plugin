@@ -1,6 +1,6 @@
 mod render_hook;
 
-use self::render_hook::{Renderer, StartStopRendering};
+use self::render_hook::{Renderable, StartStopRendering};
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Debug)]
@@ -8,7 +8,7 @@ struct Bubble {
     player_id: usize,
 }
 
-impl Renderer for Bubble {
+impl Renderable for Bubble {
     fn render(&mut self) {
         todo!()
     }

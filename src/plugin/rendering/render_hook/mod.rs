@@ -1,7 +1,7 @@
-mod renderer;
+mod renderable;
 
-use self::renderer::render_all;
-pub use self::renderer::{Renderer, StartStopRendering};
+use self::renderable::render_all;
+pub use self::renderable::{Renderable, StartStopRendering};
 use classicube_sys::{Entities, Entity, EntityVTABLE, ENTITIES_SELF_ID};
 use std::{
     cell::Cell,
