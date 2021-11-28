@@ -1,22 +1,31 @@
+mod bubble;
+mod context;
 mod render_hook;
 
-use self::render_hook::{Renderable, StartStopRendering};
+use self::{bubble::Bubble, render_hook::StartStopRendering};
+use classicube_helpers::{entities::ENTITY_SELF_ID, WithBorrow};
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Debug)]
-struct Bubble {
-    player_id: usize,
-}
-
-impl Renderable for Bubble {
-    fn render(&mut self) {
-        todo!()
-    }
-}
+thread_local!(
+    static THING: RefCell<Option<Rc<RefCell<Bubble>>>> = Default::default();
+);
 
 pub fn initialize() {
+    context::initialize();
     render_hook::initialize();
 
-    let bubble = Rc::new(RefCell::new(Bubble { player_id: 0 }));
-    bubble.start_rendering();
+    THING.with_borrow_mut(|option| {
+        let bubble = Rc::new(RefCell::new(Bubble::new(ENTITY_SELF_ID)));
+        bubble.start_rendering();
+        *option = Some(bubble);
+    });
+}
+
+pub fn free() {
+    THING.with_borrow_mut(|option| {
+        drop(option.take());
+    });
+
+    render_hook::free();
+    context::free();
 }

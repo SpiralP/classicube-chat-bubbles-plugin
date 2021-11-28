@@ -27,7 +27,7 @@ pub fn render_all() {
     })
 }
 
-pub trait Renderable: std::fmt::Debug {
+pub trait Renderable {
     fn render(&mut self);
 }
 
@@ -39,7 +39,6 @@ pub trait StartStopRendering {
 impl<T> StartStopRendering for Rc<RefCell<T>>
 where
     T: Renderable,
-    T: std::fmt::Debug,
     T: 'static,
 {
     fn start_rendering(&self) {

@@ -1,6 +1,5 @@
 mod renderable;
 
-use self::renderable::render_all;
 pub use self::renderable::{Renderable, StartStopRendering};
 use classicube_sys::{Entities, Entity, EntityVTABLE, ENTITIES_SELF_ID};
 use std::{
@@ -28,7 +27,7 @@ extern "C" fn hook(local_player_entity: *mut Entity, delta: c_double, t: c_float
         }
     });
 
-    render_all();
+    renderable::render_all();
 }
 
 pub fn initialize() {
@@ -54,4 +53,6 @@ pub fn initialize() {
     });
 }
 
-// self entity doesn't exist during free; no need to cleanup
+pub fn free() {
+    // self entity doesn't exist during free; no need to cleanup
+}

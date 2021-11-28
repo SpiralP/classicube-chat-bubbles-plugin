@@ -22,4 +22,6 @@ pub fn reset() {
 
 pub fn free() {
     debug!("plugin free");
+
+    rendering::free();
 }
