@@ -4,6 +4,15 @@ use std::{
     rc::{Rc, Weak},
 };
 
+pub trait Renderable {
+    fn render(&mut self);
+}
+
+pub trait StartStopRendering {
+    fn start_rendering(&self);
+    fn stop_rendering(&self);
+}
+
 type Inner = Weak<RefCell<dyn Renderable>>;
 
 thread_local!(
@@ -12,28 +21,6 @@ thread_local!(
 
 fn with_renderables<R, F: FnOnce(&mut Vec<Inner>) -> R>(f: F) -> R {
     RENDERABLES.with_borrow_mut(|renderables| f(renderables))
-}
-
-pub fn render_all() {
-    with_renderables(|renderables| {
-        renderables.retain(|renderable| {
-            if let Some(renderable) = renderable.upgrade() {
-                renderable.borrow_mut().render();
-                true
-            } else {
-                false
-            }
-        })
-    })
-}
-
-pub trait Renderable {
-    fn render(&mut self);
-}
-
-pub trait StartStopRendering {
-    fn start_rendering(&self);
-    fn stop_rendering(&self);
 }
 
 impl<T> StartStopRendering for Rc<RefCell<T>>
@@ -56,6 +43,19 @@ where
             renderables.retain(move |other| !other.ptr_eq(&weak));
         });
     }
+}
+
+pub fn render_all() {
+    with_renderables(|renderables| {
+        renderables.retain(|renderable| {
+            if let Some(renderable) = renderable.upgrade() {
+                renderable.borrow_mut().render();
+                true
+            } else {
+                false
+            }
+        })
+    })
 }
 
 #[test]

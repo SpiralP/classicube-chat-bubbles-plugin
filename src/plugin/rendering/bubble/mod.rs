@@ -1,12 +1,15 @@
+use crate::plugin::events::{InputEvent, InputEventListener};
+
 use super::{context::Texture_Render, render_hook::Renderable};
-use classicube_helpers::WithBorrow;
+use anyhow::{Error, Result};
+use classicube_helpers::{entities::Entity, WithBorrow};
 use classicube_sys::{
     cc_int16, DrawTextArgs, Drawer2D_DrawText, Drawer2D_MakeFont, Drawer2D_TextHeight,
-    Drawer2D_TextWidth, Entities, FontDesc, Gfx, Gfx_LoadMatrix, Gfx_SetAlphaTest,
-    Gfx_SetTexturing, Matrix, MatrixType__MATRIX_VIEW, OwnedBitmap, OwnedString, OwnedTexture,
-    TextureRec, Vec3, FONT_FLAGS_FONT_FLAGS_NONE, MATH_DEG2RAD,
+    Drawer2D_TextWidth, FontDesc, Gfx, Gfx_LoadMatrix, Gfx_SetAlphaTest, Gfx_SetTexturing, Matrix,
+    MatrixType__MATRIX_VIEW, OwnedBitmap, OwnedString, OwnedTexture, TextureRec, Vec3,
+    FONT_FLAGS_FONT_FLAGS_NONE, MATH_DEG2RAD,
 };
-use std::{cell::RefCell, mem, os::raw::c_float};
+use std::{cell::RefCell, mem, os::raw::c_float, rc::Weak};
 use tracing::{debug, warn};
 
 pub const BUBBLE_WIDTH: u8 = 4;
@@ -21,50 +24,62 @@ thread_local!(
 );
 
 pub struct Bubble {
-    entity_id: u8,
+    entity: Weak<Entity>,
     texture: Option<OwnedTexture>,
     transform: Matrix,
 }
 
 impl Bubble {
-    pub fn new(entity_id: u8) -> Self {
+    pub fn new(entity: Weak<Entity>) -> Self {
         Self {
-            entity_id,
+            entity,
             texture: Default::default(),
             transform: Matrix::IDENTITY,
         }
     }
 
-    fn update(&mut self) {
-        if self.texture.is_none() {
-            // TODO or if text changed
-            self.texture = Some(create_texture());
-        }
-
-        self.update_transform();
-    }
-
     fn update_transform(&mut self) {
-        let p = unsafe { Entities.List[self.entity_id as usize] };
-        if p.is_null() {
-            warn!("player {} is null!", self.entity_id);
+        let entity = if let Some(entity) = self.entity.upgrade() {
+            entity
+        } else {
+            warn!("entity Rc Weak dropped?");
             return;
-        }
-        let e = unsafe { &mut *p };
+        };
 
-        let scale = Vec3::create(1.0, 1.0, 1.0);
+        let (position, rotation) = match get_transform(entity.as_ref()) {
+            Ok(ok) => ok,
+            Err(e) => {
+                warn!("get_transform: {:?}", e);
+                return;
+            }
+        };
+
+        let (width, height) = match self.texture.as_mut() {
+            Some(t) => {
+                let t = t.as_texture();
+                (t.Width as f32, t.Height as f32)
+            }
+            _ => return,
+        };
+
+        // let ratio = width as f32 / height as f32;
+        let width = BUBBLE_WIDTH as f32 / width as f32;
+        // let height = ratio * width;
+        let scale = Vec3::create(width, width, 1.0);
         self.transform = Matrix::scale(scale.X, scale.Y, scale.Z)
-            * Matrix::rotate_z((-e.RotZ + 180.0) * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_x(-e.RotX * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_y(-e.RotY * MATH_DEG2RAD as c_float)
-            * Matrix::translate(e.Position.X, e.Position.Y, e.Position.Z);
+            * Matrix::rotate_z((-rotation.Z + 180.0) * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_x(-rotation.X * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_y(-rotation.Y * MATH_DEG2RAD as c_float)
+            * Matrix::translate(position.X, position.Y, position.Z);
         /* return rotZ * rotX * rotY * scale * translate; */
     }
 }
 
 impl Renderable for Bubble {
     fn render(&mut self) {
-        self.update();
+        if self.texture.is_some() {
+            self.update_transform();
+        }
 
         let texture = match self.texture.as_mut() {
             Some(it) => it.as_texture_mut(),
@@ -89,14 +104,31 @@ impl Renderable for Bubble {
     }
 }
 
-#[tracing::instrument]
-fn create_texture() -> OwnedTexture {
-    debug!("");
-    let text = "hello";
+impl InputEventListener for Bubble {
+    fn handle_event(&mut self, event: &InputEvent) {
+        match event {
+            InputEvent::ChatOpened => {
+                self.texture = Some(create_texture(""));
+            }
 
-    let mut bitmap = FONT.with_borrow_mut(|font| {
+            InputEvent::ChatClosed => {
+                self.texture = None;
+            }
+
+            InputEvent::InputTextChanged(text) => {
+                self.texture = Some(create_texture(text));
+            }
+        }
+    }
+}
+
+#[tracing::instrument]
+fn create_texture(text: &str) -> OwnedTexture {
+    debug!("");
+
+    let (mut bitmap, width, height) = FONT.with_borrow_mut(|font| {
         let string = OwnedString::new(text);
-        let bitmap = unsafe {
+        let (bitmap, width, height) = unsafe {
             let mut text_args = DrawTextArgs {
                 text: string.get_cc_string(),
                 font,
@@ -105,32 +137,38 @@ fn create_texture() -> OwnedTexture {
 
             let text_width = Drawer2D_TextWidth(&mut text_args);
             let text_height = Drawer2D_TextHeight(&mut text_args);
+            let width = text_width;
+            let height = text_height;
 
-            let mut bitmap = OwnedBitmap::new_pow_of_2(text_width, text_height, 0xFFFF_00FF);
+            let mut bitmap = OwnedBitmap::new_pow_of_2(width, height, 0xFFFF_00FF);
             Drawer2D_DrawText(bitmap.as_bitmap_mut(), &mut text_args, 0, 0);
 
-            bitmap
+            (bitmap, width, height)
         };
 
         drop(string);
 
-        bitmap
+        (bitmap, width, height)
     });
+
+    let u2 = width as f32 / bitmap.as_bitmap().width as f32;
+    let v2 = height as f32 / bitmap.as_bitmap().height as f32;
 
     let texture = OwnedTexture::new(
         bitmap.as_bitmap_mut(),
-        (
-            -(BUBBLE_WIDTH as cc_int16 / 2),
-            -(BUBBLE_HEIGHT as cc_int16),
-        ),
-        (BUBBLE_WIDTH as _, BUBBLE_HEIGHT as _),
+        (-(width as cc_int16 / 2), -(height as cc_int16)),
+        (width as _, height as _),
         TextureRec {
             U1: 0.0,
             V1: 0.0,
-            U2: 1.0,
-            V2: 1.0,
+            U2: u2,
+            V2: v2,
         },
     );
+
+    // let tex = texture.as_texture_mut();
+    // tex.Width = width as _;
+    // tex.Height = height as _;
 
     texture
 }
@@ -150,3 +188,15 @@ fn create_texture() -> OwnedTexture {
 //         Gfx_UpdateTexturePart(texture.ID, 0, 0, part, 0);
 //     }
 // }
+
+fn get_transform(entity: &Entity) -> Result<(Vec3, Vec3)> {
+    let inner = entity.get_inner();
+
+    let bubble_y = entity.get_model_name_y() + (1.0 / 32.0) * inner.NameTex.Height as f32;
+    let position = Vec3::transform_y(bubble_y, inner.Transform);
+
+    let rot = entity.get_rot();
+    let rotation = Vec3::create(rot[0] + entity.get_head()[0], rot[1], rot[2]);
+
+    Ok::<_, Error>((position, rotation))
+}

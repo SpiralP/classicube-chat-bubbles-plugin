@@ -1,3 +1,4 @@
+mod events;
 mod rendering;
 
 use tracing::debug;
@@ -6,6 +7,7 @@ pub fn initialize() {
     debug!("plugin initialize");
 
     rendering::initialize();
+    events::initialize();
 }
 
 pub fn on_new_map() {
@@ -23,5 +25,6 @@ pub fn reset() {
 pub fn free() {
     debug!("plugin free");
 
+    events::free();
     rendering::free();
 }
