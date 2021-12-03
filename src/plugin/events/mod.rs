@@ -2,10 +2,11 @@ mod chat_input;
 mod input_event_listener;
 mod options;
 
-pub use self::input_event_listener::{InputEvent, InputEventListener, StartStopListening};
+pub use self::input_event_listener::{
+    emit_input_event, InputEvent, InputEventListener, StartStopListening,
+};
 use self::{chat_input::ChatScreen, options::get_input_button};
-use crate::plugin::events::input_event_listener::emit_input_event;
-use classicube_helpers::{async_manager, events::input, WithBorrow};
+use classicube_helpers::{async_manager, entities::ENTITY_SELF_ID, events::input, WithBorrow};
 use classicube_sys::{
     Gui_GetInputGrab, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER, InputButtons_KEY_SLASH,
     KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT,
@@ -50,14 +51,14 @@ pub fn initialize() {
                 open.set(false);
                 // let close = key == InputButtons_KEY_ESCAPE;
                 debug!("chat close");
-                emit_input_event(InputEvent::ChatClosed);
+                emit_input_event(ENTITY_SELF_ID, InputEvent::ChatClosed);
             }
             return;
         }
         if key == keybind_open_chat || key == InputButtons_KEY_SLASH {
             open.set(true);
             debug!("chat open");
-            emit_input_event(InputEvent::ChatOpened);
+            emit_input_event(ENTITY_SELF_ID, InputEvent::ChatOpened);
 
             let chat_screen = if let Some(screen) = NonNull::new(unsafe { Gui_GetInputGrab() }) {
                 debug!(?screen);
@@ -83,7 +84,7 @@ pub fn initialize() {
                         old = text.clone();
 
                         debug!("{:?}", text);
-                        emit_input_event(InputEvent::InputTextChanged(text));
+                        emit_input_event(ENTITY_SELF_ID, InputEvent::InputTextChanged(text));
                     }
 
                     async_manager::sleep(Duration::from_millis(500)).await;

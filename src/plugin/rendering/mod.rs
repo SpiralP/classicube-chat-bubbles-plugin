@@ -36,7 +36,7 @@ pub fn initialize() {
             BUBBLES.with_borrow_mut(move |map| {
                 let bubble = Rc::new(RefCell::new(Bubble::new(entity)));
                 bubble.start_rendering();
-                bubble.start_listening();
+                bubble.start_listening(id);
                 map.insert(id, bubble);
             });
         }

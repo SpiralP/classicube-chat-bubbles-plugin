@@ -1,3 +1,4 @@
+use crate::plugin::events::{emit_input_event, InputEvent};
 use anyhow::Result;
 use classicube_relay::{packet::Scope, Stream};
 use serde::{Deserialize, Serialize};
@@ -8,6 +9,7 @@ pub const RELAY_CHANNEL: u8 = 210;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RelayMessage {
     WhosThere,
+    ChatInputEvent(InputEvent),
 }
 
 impl RelayMessage {
@@ -35,6 +37,10 @@ impl RelayMessage {
             RelayMessage::WhosThere => {
                 // respond to request to connect, with offer
                 // send_offer(player_id);
+            }
+
+            RelayMessage::ChatInputEvent(input_event) => {
+                emit_input_event(player_id, input_event);
             }
         }
 
