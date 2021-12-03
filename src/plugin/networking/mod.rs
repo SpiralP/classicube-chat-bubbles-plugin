@@ -1,7 +1,7 @@
 mod message;
 
 use self::message::RELAY_CHANNEL;
-use crate::plugin::networking::message::RelayMessage;
+pub use crate::plugin::networking::message::RelayMessage;
 use anyhow::Error;
 use classicube_helpers::{async_manager, WithBorrow};
 use classicube_relay::{packet::MapScope, RelayListener};
@@ -30,7 +30,7 @@ pub fn initialize() {
 pub fn on_new_map_loaded() {
     async_manager::spawn_local_on_main_thread(async move {
         if let Err(e) = async move {
-            // send request to everyone in map
+            // send request to everyone in map (to tell server we have this plugin)
             RelayMessage::WhosThere.send(MapScope { have_plugin: true })?;
             Ok::<_, Error>(())
         }

@@ -6,7 +6,7 @@ use std::{
     rc::{Rc, Weak},
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InputEvent {
     ChatOpened,
     ChatClosed,
