@@ -214,6 +214,7 @@ dependencies = [
  "classicube-helpers",
  "classicube-relay",
  "classicube-sys",
+ "futures",
  "serde",
  "tracing",
  "tracing-subscriber",

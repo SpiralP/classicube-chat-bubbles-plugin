@@ -136,12 +136,18 @@ fn create_texture(text: &str) -> OwnedTexture {
             };
 
             let text_width = Drawer2D_TextWidth(&mut text_args);
-            let text_height = Drawer2D_TextHeight(&mut text_args);
-            let width = text_width;
-            let height = text_height;
+            let text_height = if text_width == 0 {
+                0
+            } else {
+                Drawer2D_TextHeight(&mut text_args)
+            };
+            let width = text_width + 4;
+            let height = text_height + 4;
+
+            debug!(?text_width, ?text_height);
 
             let mut bitmap = OwnedBitmap::new_pow_of_2(width, height, 0xFFFF_00FF);
-            Drawer2D_DrawText(bitmap.as_bitmap_mut(), &mut text_args, 0, 0);
+            Drawer2D_DrawText(bitmap.as_bitmap_mut(), &mut text_args, 1, 1);
 
             (bitmap, width, height)
         };
