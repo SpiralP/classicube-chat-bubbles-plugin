@@ -2,9 +2,8 @@
 
 use classicube_helpers::{WithBorrow, WithInner};
 use classicube_sys::{
-    Gfx_BindTexture, Gfx_Make2DQuad, Gfx_SetVertexFormat, Gfx_UpdateDynamicVb_IndexedTris,
-    OwnedGfxVertexBuffer, PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED,
-    PACKEDCOL_WHITE,
+    Gfx_BindTexture, Gfx_SetVertexFormat, Gfx_UpdateDynamicVb_IndexedTris, OwnedGfxVertexBuffer,
+    PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED, VertexTextured, PACKEDCOL_WHITE,
 };
 use std::cell::RefCell;
 use tracing::warn;
@@ -44,4 +43,47 @@ pub fn context_recreated() {
 
 pub fn context_lost() {
     TEX_VB.with_borrow_mut(|tex_vb| drop(tex_vb.take()));
+}
+
+/// clockwise verts (for backface culling), differs from ClassiCube source!
+pub fn Gfx_Make2DQuad(tex: &mut Texture, col: PackedCol) -> [VertexTextured; 4] {
+    let x1: f32 = tex.X as _;
+    let x2: f32 = (tex.X as f32 + tex.Width as f32) as _;
+    let y1: f32 = tex.Y as _;
+    let y2: f32 = (tex.Y as f32 + tex.Height as f32) as _;
+
+    [
+        VertexTextured {
+            X: x1,
+            Y: y1,
+            Z: 0 as _,
+            Col: col,
+            U: tex.uv.U1,
+            V: tex.uv.V1,
+        },
+        VertexTextured {
+            X: x1,
+            Y: y2,
+            Z: 0 as _,
+            Col: col,
+            U: tex.uv.U1,
+            V: tex.uv.V2,
+        },
+        VertexTextured {
+            X: x2,
+            Y: y2,
+            Z: 0 as _,
+            Col: col,
+            U: tex.uv.U2,
+            V: tex.uv.V2,
+        },
+        VertexTextured {
+            X: x2,
+            Y: y1,
+            Z: 0 as _,
+            Col: col,
+            U: tex.uv.U2,
+            V: tex.uv.V1,
+        },
+    ]
 }

@@ -4,7 +4,7 @@ use classicube_relay::{packet::Scope, Stream};
 use serde::{Deserialize, Serialize};
 use tracing::trace;
 
-pub const RELAY_CHANNEL: u8 = 210;
+pub const RELAY_CHANNEL: u8 = 202;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RelayMessage {
