@@ -1,7 +1,8 @@
-pub mod emit_local;
 pub mod listener;
+pub mod local_handler;
 
 use self::listener::with_all_listeners;
+use classicube_helpers::entities::ENTITY_SELF_ID;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
@@ -28,10 +29,14 @@ impl PlayerChatEvent {
                     }
                 })
             }
-        })
+        });
+
+        if entity_id == ENTITY_SELF_ID {
+            local_handler::handle_local_emit(self);
+        }
     }
 }
 
 pub fn free() {
-    emit_local::free();
+    local_handler::free();
 }

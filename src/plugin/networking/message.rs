@@ -1,5 +1,6 @@
 use crate::plugin::events::player_chat_event::PlayerChatEvent;
-use anyhow::Result;
+use anyhow::{ensure, Result};
+use classicube_helpers::entities::ENTITY_SELF_ID;
 use classicube_relay::{packet::Scope, Stream};
 use serde::{Deserialize, Serialize};
 use tracing::trace;
@@ -29,14 +30,16 @@ impl RelayMessage {
         Ok(())
     }
 
+    #[tracing::instrument]
     pub fn handle_receive(player_id: u8, compressed_data: &[u8]) -> Result<()> {
+        ensure!(player_id != ENTITY_SELF_ID, "got ENTITY_SELF_ID");
+
         let data = zstd::decode_all(compressed_data)?;
         let relay_message = bincode::deserialize::<RelayMessage>(&data)?;
-        trace!(?player_id, ?relay_message, "handle_receive");
+        trace!(?player_id, ?relay_message, "");
         match relay_message {
             RelayMessage::WhosThere => {
-                // respond to request to connect, with offer
-                // send_offer(player_id);
+                //
             }
 
             RelayMessage::PlayerChatEvent(event) => {
