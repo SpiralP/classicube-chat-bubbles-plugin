@@ -2,7 +2,7 @@ pub mod chat_screen;
 pub mod options;
 
 use self::{chat_screen::ChatScreen, options::get_input_button};
-use crate::plugin::events::input_event::{handle_local::handle_local_event, InputEvent};
+use crate::plugin::events::player_chat_event::PlayerChatEvent;
 use classicube_helpers::{events::input, WithBorrow};
 use classicube_sys::{
     Gui_GetInputGrab, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER, InputButtons_KEY_SLASH,
@@ -47,7 +47,7 @@ pub fn initialize() {
                         open.set(false);
                         // let close = key == InputButtons_KEY_ESCAPE;
                         debug!("chat close");
-                        handle_local_event(InputEvent::ChatClosed);
+                        PlayerChatEvent::ChatClosed.emit_local();
                     }
                 } else {
                     check_input_changed(open.get(), chat_screen.get());
@@ -55,7 +55,7 @@ pub fn initialize() {
                     if !repeating && (key == keybind_open_chat || key == InputButtons_KEY_SLASH) {
                         open.set(true);
                         debug!("chat open");
-                        handle_local_event(InputEvent::ChatOpened);
+                        PlayerChatEvent::ChatOpened.emit_local();
 
                         unsafe {
                             if let Some(screen) = NonNull::new(Gui_GetInputGrab()) {
@@ -113,7 +113,7 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
 
         if changed {
             debug!(?text, "changed");
-            handle_local_event(InputEvent::InputTextChanged(text));
+            PlayerChatEvent::InputTextChanged(text).emit_local();
         }
     }
 }

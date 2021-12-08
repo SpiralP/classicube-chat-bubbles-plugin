@@ -1,3 +1,5 @@
+pub mod chat_message_listener;
+
 use classicube_helpers::{
     entities::ENTITY_SELF_ID,
     events::chat::{ChatReceivedEvent, ChatReceivedEventHandler},
@@ -6,6 +8,11 @@ use classicube_helpers::{
 };
 use classicube_sys::{MsgType_MSG_TYPE_NORMAL, Server};
 use std::cell::RefCell;
+
+pub struct ChatMessage {
+    player_id: u8,
+    message: String,
+}
 
 thread_local!(
     static CHAT_RECEIVED_HANDLER: RefCell<Option<ChatReceivedEventHandler>> = Default::default();
@@ -31,9 +38,13 @@ pub fn initialize() {
                     return;
                 }
 
-                if let Some((id, message)) = find_player_from_message(message) {
+                if let Some((player_id, message)) = find_player_from_message(message) {
                     // handle_local_event(InputEvent::InputTextChanged(text));
                     todo!();
+                    ChatMessage {
+                        player_id,
+                        message: message.to_string(),
+                    };
                 }
             },
         );

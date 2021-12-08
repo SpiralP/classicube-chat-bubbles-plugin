@@ -1,14 +1,14 @@
 pub mod chat_input;
-pub mod chat_messages;
-pub mod input_event;
+pub mod chat_message;
+pub mod player_chat_event;
 
 pub fn initialize() {
     chat_input::initialize();
-    chat_messages::initialize();
+    chat_message::initialize();
 }
 
 pub fn free() {
-    input_event::free();
-    chat_messages::free();
+    player_chat_event::free();
+    chat_message::free();
     chat_input::free();
 }

@@ -3,7 +3,7 @@ pub mod context;
 pub mod render_hook;
 
 use crate::plugin::{
-    events::input_event::input_event_listener::StartStopListening,
+    events::player_chat_event::listener::StartStopListening,
     rendering::{bubble::Bubble, render_hook::renderable::StartStopRendering},
 };
 use classicube_helpers::{

@@ -1,5 +1,7 @@
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
-use crate::plugin::events::input_event::{input_event_listener::InputEventListener, InputEvent};
+use crate::plugin::events::player_chat_event::{
+    listener::PlayerChatEventListener, PlayerChatEvent,
+};
 use anyhow::{Error, Result};
 use classicube_helpers::{entities::Entity, WithBorrow};
 use classicube_sys::{
@@ -119,20 +121,22 @@ impl Renderable for Bubble {
     }
 }
 
-impl InputEventListener for Bubble {
-    fn handle_event(&mut self, event: &InputEvent) {
+impl PlayerChatEventListener for Bubble {
+    fn handle_event(&mut self, event: &PlayerChatEvent) {
         match event {
-            InputEvent::ChatOpened => {
+            PlayerChatEvent::ChatOpened => {
                 self.textures = Some(create_texture(""));
             }
 
-            InputEvent::ChatClosed => {
+            PlayerChatEvent::ChatClosed => {
                 self.textures = None;
             }
 
-            InputEvent::InputTextChanged(text) => {
+            PlayerChatEvent::InputTextChanged(text) => {
                 self.textures = Some(create_texture(text));
             }
+
+            PlayerChatEvent::Message(_) => {}
         }
     }
 }
