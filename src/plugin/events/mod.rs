@@ -1,16 +1,14 @@
-mod chat_input;
-mod handle_local;
-mod input_event_listener;
-
-pub use self::input_event_listener::{
-    emit_input_event, InputEvent, InputEventListener, StartStopListening,
-};
+pub mod chat_input;
+pub mod chat_messages;
+pub mod input_event;
 
 pub fn initialize() {
     chat_input::initialize();
+    chat_messages::initialize();
 }
 
 pub fn free() {
-    handle_local::free();
+    input_event::free();
+    chat_messages::free();
     chat_input::free();
 }

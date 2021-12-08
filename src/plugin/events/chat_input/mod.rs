@@ -1,8 +1,8 @@
-mod chat_screen;
-mod options;
+pub mod chat_screen;
+pub mod options;
 
 use self::{chat_screen::ChatScreen, options::get_input_button};
-use crate::plugin::events::{handle_local::handle_local_event, InputEvent};
+use crate::plugin::events::input_event::{handle_local::handle_local_event, InputEvent};
 use classicube_helpers::{events::input, WithBorrow};
 use classicube_sys::{
     Gui_GetInputGrab, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER, InputButtons_KEY_SLASH,

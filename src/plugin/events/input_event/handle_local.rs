@@ -1,6 +1,5 @@
-use crate::plugin::networking::RelayMessage;
-
-use super::{emit_input_event, InputEvent};
+use super::{input_event_listener::emit_input_event, InputEvent};
+use crate::plugin::networking::message::RelayMessage;
 use classicube_helpers::{async_manager, entities::ENTITY_SELF_ID, CellGetSet, WithBorrow};
 use classicube_relay::packet::MapScope;
 use futures::future::AbortHandle;

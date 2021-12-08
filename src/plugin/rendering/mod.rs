@@ -1,9 +1,11 @@
-mod bubble;
-mod context;
-mod render_hook;
+pub mod bubble;
+pub mod context;
+pub mod render_hook;
 
-use self::{bubble::Bubble, render_hook::StartStopRendering};
-use crate::plugin::events::StartStopListening;
+use crate::plugin::{
+    events::input_event::input_event_listener::StartStopListening,
+    rendering::{bubble::Bubble, render_hook::renderable::StartStopRendering},
+};
 use classicube_helpers::{
     entities::{Entities, Entity},
     WithBorrow,

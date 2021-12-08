@@ -26,6 +26,7 @@ unsafe fn Gfx_Draw2DTexture(tex: &mut Texture, col: PackedCol) {
         });
 }
 
+#[allow(clippy::missing_safety_doc)]
 pub unsafe fn Texture_Render(tex: &mut Texture) {
     Gfx_BindTexture(tex.ID);
     Gfx_Draw2DTexture(tex, PACKEDCOL_WHITE);

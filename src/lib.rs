@@ -1,5 +1,5 @@
-mod logger;
-mod plugin;
+pub mod logger;
+pub mod plugin;
 
 use classicube_helpers::time;
 use classicube_sys::IGameComponent;

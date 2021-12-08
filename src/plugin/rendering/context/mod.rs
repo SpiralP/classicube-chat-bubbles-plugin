@@ -1,6 +1,5 @@
-mod vertex_buffer;
+pub mod vertex_buffer;
 
-pub use self::vertex_buffer::Texture_Render;
 use classicube_helpers::{
     events::gfx::{ContextLostEventHandler, ContextRecreatedEventHandler},
     WithBorrow,

@@ -1,4 +1,4 @@
-use crate::plugin::events::{emit_input_event, InputEvent};
+use crate::plugin::events::input_event::{input_event_listener::emit_input_event, InputEvent};
 use anyhow::Result;
 use classicube_relay::{packet::Scope, Stream};
 use serde::{Deserialize, Serialize};

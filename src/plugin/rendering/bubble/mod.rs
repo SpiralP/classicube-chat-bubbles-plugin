@@ -1,6 +1,5 @@
-use crate::plugin::events::{InputEvent, InputEventListener};
-
-use super::{context::Texture_Render, render_hook::Renderable};
+use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
+use crate::plugin::events::input_event::{input_event_listener::InputEventListener, InputEvent};
 use anyhow::{Error, Result};
 use classicube_helpers::{entities::Entity, WithBorrow};
 use classicube_sys::{

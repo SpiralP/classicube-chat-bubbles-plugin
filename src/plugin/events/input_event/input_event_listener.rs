@@ -1,17 +1,10 @@
+use super::InputEvent;
 use classicube_helpers::WithBorrow;
-use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
 };
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum InputEvent {
-    ChatOpened,
-    ChatClosed,
-    InputTextChanged(String),
-}
 
 pub trait InputEventListener {
     fn handle_event(&mut self, event: &InputEvent);

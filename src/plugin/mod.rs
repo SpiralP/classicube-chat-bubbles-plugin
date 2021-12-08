@@ -1,6 +1,6 @@
-mod events;
-mod networking;
-mod rendering;
+pub mod events;
+pub mod networking;
+pub mod rendering;
 
 use classicube_helpers::async_manager;
 use tracing::debug;
