@@ -5,8 +5,8 @@ use self::{chat_screen::ChatScreen, options::get_input_button};
 use crate::plugin::events::player_chat_event::PlayerChatEvent;
 use classicube_helpers::{entities::ENTITY_SELF_ID, events::input, WithBorrow};
 use classicube_sys::{
-    Gui_GetInputGrab, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER, InputButtons_KEY_SLASH,
-    KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT,
+    Gui_GetInputGrab, InputButtons, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER,
+    InputButtons_KEY_SLASH, KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -26,8 +26,12 @@ thread_local!(
 );
 
 pub fn initialize() {
-    let keybind_open_chat = get_input_button(KeyBind__KEYBIND_CHAT).unwrap();
-    let keybind_send_chat = get_input_button(KeyBind__KEYBIND_SEND_CHAT).unwrap();
+    let keybind_open_chat = get_input_button(KeyBind__KEYBIND_CHAT);
+    let is_keybind_open_chat =
+        move |key: InputButtons| keybind_open_chat.map(|k| key == k).unwrap_or(false);
+    let keybind_send_chat = get_input_button(KeyBind__KEYBIND_SEND_CHAT);
+    let is_keybind_send_chat =
+        move |key: InputButtons| keybind_send_chat.map(|k| key == k).unwrap_or(false);
 
     let open = Rc::new(Cell::new(false));
     let chat_screen = Rc::new(Cell::new(None));
@@ -40,7 +44,7 @@ pub fn initialize() {
             input_down_handler.on(move |&input::DownEvent { key, repeating }| {
                 if open.get() {
                     if !repeating
-                        && (key == keybind_send_chat
+                        && (is_keybind_send_chat(key)
                             || key == InputButtons_KEY_KP_ENTER
                             || key == InputButtons_KEY_ESCAPE)
                     {
@@ -52,7 +56,7 @@ pub fn initialize() {
                 } else {
                     check_input_changed(open.get(), chat_screen.get());
 
-                    if !repeating && (key == keybind_open_chat || key == InputButtons_KEY_SLASH) {
+                    if !repeating && (is_keybind_open_chat(key) || key == InputButtons_KEY_SLASH) {
                         open.set(true);
                         debug!("chat open");
                         PlayerChatEvent::ChatOpened.emit(ENTITY_SELF_ID);

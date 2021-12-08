@@ -18,9 +18,9 @@ impl RelayMessage {
         trace!("send {:#?}", self);
         let data = bincode::serialize(self)?;
         let compressed_data = zstd::encode_all(&*data, 0)?;
-        let stream = Stream::new(compressed_data, scope).unwrap();
-        for packet in stream.packets().unwrap() {
-            let mut data = packet.encode().unwrap();
+        let stream = Stream::new(compressed_data, scope)?;
+        for packet in stream.packets()? {
+            let mut data = packet.encode()?;
 
             unsafe {
                 classicube_sys::CPE_SendPluginMessage(RELAY_CHANNEL, data.as_mut_ptr());
