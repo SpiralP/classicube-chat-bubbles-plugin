@@ -10,7 +10,14 @@ use classicube_sys::{
     Gfx_SetTexturing, Matrix, MatrixType__MATRIX_VIEW, OwnedBitmap, OwnedString, OwnedTexture,
     TextureRec, Vec3, FONT_FLAGS_FONT_FLAGS_NONE, MATH_DEG2RAD,
 };
-use std::{cell::RefCell, mem, os::raw::c_float, rc::Weak};
+use std::{
+    cell::RefCell,
+    collections::VecDeque,
+    mem,
+    os::raw::c_float,
+    rc::Weak,
+    time::{Duration, Instant},
+};
 use tracing::{debug, warn};
 
 pub const BUBBLE_WIDTH: u8 = 4;
@@ -24,45 +31,21 @@ thread_local!(
     });
 );
 
-pub struct Bubble {
-    entity: Weak<Entity>,
+struct InnerBubble {
     /// (front, back)
-    textures: Option<(OwnedTexture, OwnedTexture)>,
+    textures: (OwnedTexture, OwnedTexture),
     transforms: (Matrix, Matrix),
 }
-
-impl Bubble {
-    pub fn new(entity: Weak<Entity>) -> Self {
-        Self {
-            entity,
-            textures: Default::default(),
+impl InnerBubble {
+    pub fn new(text: &str) -> InnerBubble {
+        InnerBubble {
+            textures: create_textures(text),
             transforms: (Matrix::IDENTITY, Matrix::IDENTITY),
         }
     }
 
-    fn update_transforms(&mut self) {
-        let entity = if let Some(entity) = self.entity.upgrade() {
-            entity
-        } else {
-            warn!("entity Rc Weak dropped?");
-            return;
-        };
-
-        let (position, rotation) = match get_transform(entity.as_ref()) {
-            Ok(ok) => ok,
-            Err(e) => {
-                warn!("get_transform: {:?}", e);
-                return;
-            }
-        };
-
-        let (width, height) = match self.textures.as_mut() {
-            Some((t, _)) => {
-                let t = t.as_texture();
-                (t.Width as f32, t.Height as f32)
-            }
-            _ => return,
-        };
+    pub fn update_transform(&mut self, position: Vec3, rotation: Vec3) {
+        let width = self.textures.0.as_texture().Width;
 
         // let ratio = width as f32 / height as f32;
         let width = BUBBLE_WIDTH as f32 / width as f32;
@@ -73,35 +56,67 @@ impl Bubble {
         let scale = Matrix::scale(scale.X, scale.Y, scale.Z);
 
         let front = scale
-            * Matrix::rotate_z((-rotation.Z + 180.0) * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_z(-rotation.Z * MATH_DEG2RAD as c_float)
             * Matrix::rotate_x(-rotation.X * MATH_DEG2RAD as c_float)
             * Matrix::rotate_y(-rotation.Y * MATH_DEG2RAD as c_float)
             * translation;
 
         let back = scale
-            * Matrix::rotate_z((-rotation.Z + 180.0) * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_x(-rotation.X * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_z((-rotation.Z + 0.0) * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_x((-rotation.X + 0.0) * MATH_DEG2RAD as c_float)
             * Matrix::rotate_y((-rotation.Y + 180.0) * MATH_DEG2RAD as c_float)
             * translation;
 
         self.transforms = (front, back);
     }
+
+    pub fn update_transform_entity(&mut self, entity: &Entity) {
+        let (position, rotation) = match get_transform(entity) {
+            Ok(ok) => ok,
+            Err(e) => {
+                warn!("get_transform: {:?}", e);
+                return;
+            }
+        };
+        self.update_transform(position, rotation);
+    }
 }
 
-impl Renderable for Bubble {
-    fn render(&mut self) {
-        if self.textures.is_some() {
-            self.update_transforms();
-        }
+pub struct Bubble {
+    entity: Weak<Entity>,
+    typing: Option<InnerBubble>,
+    messages: VecDeque<(Instant, InnerBubble)>,
+}
 
-        let (front_texture, back_texture) = match self.textures.as_mut() {
-            Some((front, back)) => (front.as_texture_mut(), back.as_texture_mut()),
-            _ => return,
+impl Bubble {
+    pub fn new(entity: Weak<Entity>) -> Self {
+        Self {
+            entity,
+            typing: Default::default(),
+            messages: Default::default(),
+        }
+    }
+
+    fn update_typing_transforms(&mut self) {
+        let entity = if let Some(entity) = self.entity.upgrade() {
+            entity
+        } else {
+            warn!("entity Rc Weak dropped?");
+            return;
         };
 
+        if let Some(typing) = self.typing.as_mut() {
+            typing.update_transform_entity(&entity);
+        }
+    }
+
+    fn render_inner(inner: &mut InnerBubble) {
+        let front_texture = inner.textures.0.as_texture_mut();
+        let back_texture = inner.textures.1.as_texture_mut();
+
         for (transform, texture) in [
-            (self.transforms.0, front_texture),
-            (self.transforms.1, back_texture),
+            (inner.transforms.0, front_texture),
+            (inner.transforms.1, back_texture),
         ] {
             unsafe {
                 let m = transform * Gfx.View;
@@ -121,29 +136,56 @@ impl Renderable for Bubble {
     }
 }
 
+impl Renderable for Bubble {
+    fn render(&mut self) {
+        self.update_typing_transforms();
+
+        if let Some(typing) = self.typing.as_mut() {
+            Self::render_inner(typing);
+        }
+
+        let now = Instant::now();
+        self.messages.retain(|(die_instant, _)| now < *die_instant);
+
+        for (_, message) in &mut self.messages {
+            Self::render_inner(message);
+        }
+    }
+}
+
 impl PlayerChatEventListener for Bubble {
     fn handle_event(&mut self, event: &PlayerChatEvent) {
         match event {
             PlayerChatEvent::ChatOpened => {
-                self.textures = Some(create_texture(""));
+                self.typing = Some(InnerBubble::new(""));
             }
 
             PlayerChatEvent::ChatClosed => {
-                self.textures = None;
+                self.typing = None;
             }
 
             PlayerChatEvent::InputTextChanged(text) => {
-                self.textures = Some(create_texture(text));
+                self.typing = Some(InnerBubble::new(text));
             }
 
-            PlayerChatEvent::Message(_) => {}
+            PlayerChatEvent::Message(text) => {
+                if let Some(entity) = self.entity.upgrade() {
+                    let mut inner = InnerBubble::new(text);
+                    inner.update_transform_entity(&entity);
+
+                    self.messages
+                        .push_back((Instant::now() + Duration::from_secs(5), inner));
+                } else {
+                    warn!("entity Rc Weak dropped?");
+                }
+            }
         }
     }
 }
 
 /// returns (front, back)
 #[tracing::instrument]
-fn create_texture(text: &str) -> (OwnedTexture, OwnedTexture) {
+fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
     debug!("");
 
     let (mut bitmap, width, height) = FONT.with_borrow_mut(|font| {
@@ -185,27 +227,23 @@ fn create_texture(text: &str) -> (OwnedTexture, OwnedTexture) {
         (-(width as cc_int16 / 2), -(height as cc_int16)),
         (width as _, height as _),
         TextureRec {
-            U1: 0.0,
-            V1: 0.0,
-            U2: u2,
-            V2: v2,
+            U1: u2,
+            V1: v2,
+            U2: 0.0,
+            V2: 0.0,
         },
     );
 
-    let mut bitmap = OwnedBitmap::new_pow_of_2(
-        bitmap.as_bitmap().width,
-        bitmap.as_bitmap().height,
-        0xFFFF_00FF,
-    );
+    let mut bitmap = OwnedBitmap::new(1, 1, 0xFFFF_00FF);
     let back_texture = OwnedTexture::new(
         bitmap.as_bitmap_mut(),
         (-(width as cc_int16 / 2), -(height as cc_int16)),
         (width as _, height as _),
         TextureRec {
-            U1: 0.0,
-            V1: 0.0,
-            U2: u2,
-            V2: v2,
+            U1: u2,
+            V1: v2,
+            U2: 0.0,
+            V2: 0.0,
         },
     );
 
