@@ -34,13 +34,13 @@ thread_local!(
 struct InnerBubble {
     /// (front, back)
     textures: (OwnedTexture, OwnedTexture),
-    transforms: (Matrix, Matrix),
+    transform: Matrix,
 }
 impl InnerBubble {
     pub fn new(text: &str) -> InnerBubble {
         InnerBubble {
             textures: create_textures(text),
-            transforms: (Matrix::IDENTITY, Matrix::IDENTITY),
+            transform: Matrix::IDENTITY,
         }
     }
 
@@ -55,19 +55,11 @@ impl InnerBubble {
         let translation = Matrix::translate(position.X, position.Y, position.Z);
         let scale = Matrix::scale(scale.X, scale.Y, scale.Z);
 
-        let front = scale
-            * Matrix::rotate_z(-rotation.Z * MATH_DEG2RAD as c_float)
+        self.transform = scale
+            * Matrix::rotate_z(180.0 * MATH_DEG2RAD as c_float)
             * Matrix::rotate_x(-rotation.X * MATH_DEG2RAD as c_float)
             * Matrix::rotate_y(-rotation.Y * MATH_DEG2RAD as c_float)
             * translation;
-
-        let back = scale
-            * Matrix::rotate_z((-rotation.Z + 0.0) * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_x((-rotation.X + 0.0) * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_y((-rotation.Y + 180.0) * MATH_DEG2RAD as c_float)
-            * translation;
-
-        self.transforms = (front, back);
     }
 
     pub fn update_transform_entity(&mut self, entity: &Entity) {
@@ -114,19 +106,16 @@ impl Bubble {
         let front_texture = inner.textures.0.as_texture_mut();
         let back_texture = inner.textures.1.as_texture_mut();
 
-        for (transform, texture) in [
-            (inner.transforms.0, front_texture),
-            (inner.transforms.1, back_texture),
-        ] {
+        for (front, texture) in [(true, front_texture), (false, back_texture)] {
             unsafe {
-                let m = transform * Gfx.View;
+                let m = inner.transform * Gfx.View;
                 Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &m);
 
                 Gfx_SetAlphaTest(1);
                 Gfx_SetTexturing(1);
                 Gfx_SetFaceCulling(1);
 
-                Texture_Render(texture);
+                Texture_Render(texture, front);
 
                 Gfx_SetFaceCulling(0);
 
@@ -227,10 +216,10 @@ fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
         (-(width as cc_int16 / 2), -(height as cc_int16)),
         (width as _, height as _),
         TextureRec {
-            U1: u2,
-            V1: v2,
-            U2: 0.0,
-            V2: 0.0,
+            U1: 0.0,
+            V1: 0.0,
+            U2: u2,
+            V2: v2,
         },
     );
 
@@ -240,10 +229,10 @@ fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
         (-(width as cc_int16 / 2), -(height as cc_int16)),
         (width as _, height as _),
         TextureRec {
-            U1: u2,
-            V1: v2,
-            U2: 0.0,
-            V2: 0.0,
+            U1: 0.0,
+            V1: 0.0,
+            U2: u2,
+            V2: v2,
         },
     );
 

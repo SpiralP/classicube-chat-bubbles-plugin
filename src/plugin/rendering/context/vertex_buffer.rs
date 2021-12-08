@@ -13,8 +13,8 @@ thread_local!(
 );
 
 #[tracing::instrument(skip_all)]
-unsafe fn Gfx_Draw2DTexture(tex: &mut Texture, col: PackedCol) {
-    let mut vertices = Gfx_Make2DQuad(tex, col);
+unsafe fn Gfx_Draw2DTexture(tex: &mut Texture, col: PackedCol, front: bool) {
+    let mut vertices = Gfx_Make2DQuad(tex, col, front);
 
     Gfx_SetVertexFormat(VertexFormat__VERTEX_FORMAT_TEXTURED);
     TEX_VB
@@ -27,9 +27,9 @@ unsafe fn Gfx_Draw2DTexture(tex: &mut Texture, col: PackedCol) {
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn Texture_Render(tex: &mut Texture) {
+pub unsafe fn Texture_Render(tex: &mut Texture, front: bool) {
     Gfx_BindTexture(tex.ID);
-    Gfx_Draw2DTexture(tex, PACKEDCOL_WHITE);
+    Gfx_Draw2DTexture(tex, PACKEDCOL_WHITE, front);
 }
 
 pub fn context_recreated() {
@@ -47,44 +47,82 @@ pub fn context_lost() {
 }
 
 /// clockwise verts (for backface culling), differs from ClassiCube source!
-pub fn Gfx_Make2DQuad(tex: &mut Texture, col: PackedCol) -> [VertexTextured; 4] {
+pub fn Gfx_Make2DQuad(tex: &mut Texture, color: PackedCol, clockwise: bool) -> [VertexTextured; 4] {
     let x1: f32 = tex.X as _;
     let x2: f32 = (tex.X as f32 + tex.Width as f32) as _;
     let y1: f32 = tex.Y as _;
     let y2: f32 = (tex.Y as f32 + tex.Height as f32) as _;
 
-    [
-        VertexTextured {
-            X: x1,
-            Y: y1,
-            Z: 0 as _,
-            Col: col,
-            U: tex.uv.U1,
-            V: tex.uv.V1,
-        },
-        VertexTextured {
-            X: x1,
-            Y: y2,
-            Z: 0 as _,
-            Col: col,
-            U: tex.uv.U1,
-            V: tex.uv.V2,
-        },
-        VertexTextured {
-            X: x2,
-            Y: y2,
-            Z: 0 as _,
-            Col: col,
-            U: tex.uv.U2,
-            V: tex.uv.V2,
-        },
-        VertexTextured {
-            X: x2,
-            Y: y1,
-            Z: 0 as _,
-            Col: col,
-            U: tex.uv.U2,
-            V: tex.uv.V1,
-        },
-    ]
+    if !clockwise {
+        // counter-clockwise
+        [
+            VertexTextured {
+                X: x1,
+                Y: y1,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U1,
+                V: tex.uv.V1,
+            },
+            VertexTextured {
+                X: x2,
+                Y: y1,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U2,
+                V: tex.uv.V1,
+            },
+            VertexTextured {
+                X: x2,
+                Y: y2,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U2,
+                V: tex.uv.V2,
+            },
+            VertexTextured {
+                X: x1,
+                Y: y2,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U1,
+                V: tex.uv.V2,
+            },
+        ]
+    } else {
+        [
+            VertexTextured {
+                X: x1,
+                Y: y1,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U1,
+                V: tex.uv.V1,
+            },
+            VertexTextured {
+                X: x1,
+                Y: y2,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U1,
+                V: tex.uv.V2,
+            },
+            VertexTextured {
+                X: x2,
+                Y: y2,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U2,
+                V: tex.uv.V2,
+            },
+            VertexTextured {
+                X: x2,
+                Y: y1,
+                Z: 0 as _,
+                Col: color,
+                U: tex.uv.U2,
+                V: tex.uv.V1,
+            },
+        ]
+    }
 }
