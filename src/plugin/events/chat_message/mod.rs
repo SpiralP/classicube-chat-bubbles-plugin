@@ -37,7 +37,7 @@ pub fn initialize() {
                     debug!("{}: {}", player_id, message);
                     PlayerChatEvent::Message(message.to_string()).emit(player_id);
                 } else {
-                    warn!("NO!");
+                    warn!(?message, "find_player_from_message failed");
                 }
             },
         );
@@ -62,11 +62,10 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
     }
 
     // find colon from the left
-    let opt = full_msg
+    let pos = full_msg
         .find(": ")
-        .and_then(|pos| if pos > 4 { Some(pos) } else { None });
+        .and_then(|pos| if pos >= 3 { Some(pos) } else { None })?;
 
-    if let Some(pos) = opt {
         // > &fasdfasdf
 
         // &]SpiralP
@@ -75,6 +74,7 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
         // &faaa
         let said_text = &full_msg.get((pos + 2)..)?; // right without colon
 
+    debug!(?full_nick, ?said_text);
         // TODO title is [ ] before nick, team is < > before nick, also there are rank
         // symbols? &f┬ &f♂&6 Goodly: &fhi
 
@@ -87,7 +87,4 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
                 .and_then(|entry| entry.upgrade())
                 .map(|entry| (entry.get_id(), *said_text))
         })
-    } else {
-        None
-    }
 }
