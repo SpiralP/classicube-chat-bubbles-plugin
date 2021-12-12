@@ -41,7 +41,8 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
 
             debug!(?text_width, ?text_height);
 
-            let mut bitmap = OwnedBitmap::new_pow_of_2(width, height, 0xFFFF_00FF);
+            let mut bitmap =
+                OwnedBitmap::new_pow_of_2(width, height, crate::bubble_image_parts::FRONT_COLOR);
             Drawer2D_DrawText(bitmap.as_bitmap_mut(), &mut text_args, 1, 1);
 
             (bitmap, width, height)
@@ -67,7 +68,7 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
         },
     );
 
-    let mut bitmap = OwnedBitmap::new(1, 1, 0xFFFF_00FF);
+    let mut bitmap = OwnedBitmap::new(1, 1, crate::bubble_image_parts::BACK_COLOR);
     let back_texture = OwnedTexture::new(
         bitmap.as_bitmap_mut(),
         (-(width as cc_int16 / 2), -(height as cc_int16)),

@@ -1,3 +1,4 @@
+pub mod bubble_image_parts;
 pub mod logger;
 pub mod plugin;
 
