@@ -17,7 +17,7 @@ fn main() {
         let dir = dir.unwrap();
         let metadata = dir.metadata().unwrap();
         if metadata.is_file() && dir.path().extension().unwrap() == "png" {
-            let (width, pixels) = get_pixels(dir.path());
+            let (width, height, pixels) = get_pixels(dir.path());
             let name = dir.path().file_stem().unwrap().to_ascii_uppercase();
             let name = name.to_string_lossy();
 
@@ -28,7 +28,7 @@ fn main() {
                     pixels[0]
                 ));
                 got_front_color = true;
-            } else if name == "LEFT_SIDE" {
+            } else if name == "LEFT" {
                 // chose first non-transparent pixel
                 for pixel in &pixels {
                     if PackedCol_A(*pixel) != 0 {
@@ -43,6 +43,7 @@ fn main() {
             }
 
             code_parts.push(format!("pub const {}_WIDTH: u32 = {};", name, width));
+            code_parts.push(format!("pub const {}_HEIGHT: u32 = {};", name, height));
             code_parts.push(format!(
                 "pub const {}_PIXELS: [::classicube_sys::PackedCol; {}] = {:?};",
                 name,
@@ -52,8 +53,8 @@ fn main() {
         }
     }
 
-    assert_eq!(got_front_color, true);
-    assert_eq!(got_back_color, true);
+    assert!(got_front_color, "!got_front_color");
+    assert!(got_back_color, "!got_back_color");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let path = Path::new(&out_dir).join(format!("{}.rs", IMAGE_DIR));
@@ -61,7 +62,7 @@ fn main() {
     writeln!(rust_code_file, "{}", code_parts.join("\n")).unwrap();
 }
 
-fn get_pixels(path: PathBuf) -> (u32, Vec<PackedCol>) {
+fn get_pixels(path: PathBuf) -> (u32, u32, Vec<PackedCol>) {
     println!("{:?}", path);
 
     // The decoder is a build for reader and can be used to set various decoding options
@@ -80,6 +81,7 @@ fn get_pixels(path: PathBuf) -> (u32, Vec<PackedCol>) {
 
     (
         info.width,
+        info.height,
         match info.color_type {
             png::ColorType::Rgb => bytes
                 .chunks(3)
