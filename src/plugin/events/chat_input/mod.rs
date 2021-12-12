@@ -53,16 +53,14 @@ pub fn initialize() {
                         // let close = key == InputButtons_KEY_ESCAPE;
                         debug!("chat close");
                         PlayerChatEvent::ChatClosed.emit(ENTITY_SELF_ID);
+                    } else {
+                        check_input_changed(open.get(), chat_screen.get());
                     }
                 } else {
-                    // TODO what is this for?
-                    check_input_changed(open.get(), chat_screen.get());
-
                     // chat opened
                     if !repeating && (is_keybind_open_chat(key) || key == InputButtons_KEY_SLASH) {
                         open.set(true);
                         debug!("chat open");
-                        PlayerChatEvent::ChatOpened.emit(ENTITY_SELF_ID);
 
                         unsafe {
                             if let Some(screen) = NonNull::new(Gui_GetInputGrab()) {

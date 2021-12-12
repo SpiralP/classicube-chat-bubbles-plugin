@@ -89,16 +89,14 @@ impl Renderable for Bubble {
 impl PlayerChatEventListener for Bubble {
     fn handle_event(&mut self, event: &PlayerChatEvent) {
         match event {
-            PlayerChatEvent::ChatOpened => {
-                self.typing = Some(InnerBubble::new(""));
-            }
-
             PlayerChatEvent::ChatClosed => {
                 self.typing = None;
             }
 
             PlayerChatEvent::InputTextChanged(text) => {
-                self.typing = Some(InnerBubble::new(text));
+                if !text.is_empty() {
+                    self.typing = Some(InnerBubble::new(text));
+                }
             }
 
             PlayerChatEvent::Message(text) => {

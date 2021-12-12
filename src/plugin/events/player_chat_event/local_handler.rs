@@ -17,13 +17,11 @@ thread_local!(
     static LAST_SEND: Cell<Option<Instant>> = Default::default();
 );
 
-// TODO check (and don't send) if empty string right after ChatOpened
-
 const INTERVAL: Duration = Duration::from_millis(500);
 
 pub fn handle_local_emit(event: PlayerChatEvent) {
     DEBOUNCE_FUTURE.with_borrow_mut(move |debounce_future| match &event {
-        PlayerChatEvent::ChatOpened | PlayerChatEvent::ChatClosed => {
+        PlayerChatEvent::ChatClosed => {
             LAST_SEND.set(None);
             if let Some(handle) = debounce_future.take() {
                 handle.abort()

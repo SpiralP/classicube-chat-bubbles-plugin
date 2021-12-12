@@ -8,7 +8,6 @@ use tracing::debug;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PlayerChatEvent {
-    ChatOpened,
     ChatClosed,
     InputTextChanged(String),
     Message(String),
