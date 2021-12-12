@@ -33,8 +33,8 @@ pub fn initialize() {
                     return;
                 }
 
+                // TODO why did i do this and not just send the message through relay?
                 if let Some((player_id, message)) = find_player_from_message(message) {
-                    debug!("{}: {}", player_id, message);
                     PlayerChatEvent::Message(message.to_string()).emit(player_id);
                 } else {
                     warn!(?message, "find_player_from_message failed");
@@ -66,25 +66,25 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
         .find(": ")
         .and_then(|pos| if pos >= 3 { Some(pos) } else { None })?;
 
-        // > &fasdfasdf
+    // > &fasdfasdf
 
-        // &]SpiralP
-        let full_nick = &full_msg.get(..pos)?; // left without colon
+    // &]SpiralP
+    let full_nick = &full_msg.get(..pos)?; // left without colon
 
-        // &faaa
-        let said_text = &full_msg.get((pos + 2)..)?; // right without colon
+    // &faaa
+    let said_text = &full_msg.get((pos + 2)..)?; // right without colon
 
     debug!(?full_nick, ?said_text);
-        // TODO title is [ ] before nick, team is < > before nick, also there are rank
-        // symbols? &f┬ &f♂&6 Goodly: &fhi
+    // TODO title is [ ] before nick, team is < > before nick, also there are rank
+    // symbols? &f┬ &f♂&6 Goodly: &fhi
 
-        TAB_LIST.with(move |cell| {
-            let tab_list = &*cell.borrow();
-            tab_list
-                .as_ref()
-                .unwrap()
-                .find_entry_by_nick_name(full_nick)
-                .and_then(|entry| entry.upgrade())
-                .map(|entry| (entry.get_id(), *said_text))
-        })
+    TAB_LIST.with(move |cell| {
+        let tab_list = &*cell.borrow();
+        tab_list
+            .as_ref()
+            .unwrap()
+            .find_entry_by_nick_name(full_nick)
+            .and_then(|entry| entry.upgrade())
+            .map(|entry| (entry.get_id(), *said_text))
+    })
 }

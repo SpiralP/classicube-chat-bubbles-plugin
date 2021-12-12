@@ -43,6 +43,7 @@ pub fn initialize() {
             let mut input_down_handler = input::DownEventHandler::new();
             input_down_handler.on(move |&input::DownEvent { key, repeating }| {
                 if open.get() {
+                    // chat closed
                     if !repeating
                         && (is_keybind_send_chat(key)
                             || key == InputButtons_KEY_KP_ENTER
@@ -54,8 +55,10 @@ pub fn initialize() {
                         PlayerChatEvent::ChatClosed.emit(ENTITY_SELF_ID);
                     }
                 } else {
+                    // TODO what is this for?
                     check_input_changed(open.get(), chat_screen.get());
 
+                    // chat opened
                     if !repeating && (is_keybind_open_chat(key) || key == InputButtons_KEY_SLASH) {
                         open.set(true);
                         debug!("chat open");
