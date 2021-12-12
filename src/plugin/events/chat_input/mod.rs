@@ -120,9 +120,24 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
 
         if changed {
             debug!(?text, "changed");
-            PlayerChatEvent::InputTextChanged(text).emit(ENTITY_SELF_ID);
+
+            if !is_sensitive_text(&text) {
+                PlayerChatEvent::InputTextChanged(text).emit(ENTITY_SELF_ID);
+            }
         }
     }
+}
+
+fn is_sensitive_text(text: &str) -> bool {
+    let c = text.get(0..1).unwrap_or("");
+    // don't show whispers or commands
+    if c == "@" || c == "/" {
+        return true;
+    }
+
+    let c = text.get(0..2).unwrap_or("");
+    // don't show "To Ops" or "To Admins"
+    c == "##" || c == "++"
 }
 
 pub fn free() {

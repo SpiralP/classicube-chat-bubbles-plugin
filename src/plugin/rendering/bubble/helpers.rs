@@ -12,7 +12,7 @@ use tracing::{debug, warn};
 thread_local!(
     static FONT: RefCell<FontDesc> = RefCell::new(unsafe {
         let mut font = mem::zeroed();
-        Drawer2D_MakeFont(&mut font, 16, FONT_FLAGS_FONT_FLAGS_NONE as _);
+        Drawer2D_MakeFont(&mut font, 8, FONT_FLAGS_FONT_FLAGS_NONE as _);
         font
     });
 );
@@ -38,19 +38,22 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
                 Drawer2D_TextHeight(&mut text_args)
             };
 
-            let width = text_width + (LEFT_WIDTH as c_int) * 2 + 4;
-            let height = text_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 4;
+            let width = text_width + (LEFT_WIDTH as c_int) * 2 + 2;
+            let height =
+                text_height.max(12) + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
 
             debug!(?text_width, ?text_height, ?width, ?height);
 
             let mut bitmap = OwnedBitmap::new_pow_of_2(width, height, FRONT_COLOR);
 
-            Drawer2D_DrawText(
-                bitmap.as_bitmap_mut(),
-                &mut text_args,
-                LEFT_WIDTH as c_int,
-                TOP_HEIGHT as c_int,
-            );
+            if text_width != 0 && text_height != 0 {
+                Drawer2D_DrawText(
+                    bitmap.as_bitmap_mut(),
+                    &mut text_args,
+                    width / 2 - text_width / 2,
+                    height / 2 - text_height / 2,
+                );
+            }
 
             draw_parts(bitmap.as_bitmap_mut(), width, height);
 
