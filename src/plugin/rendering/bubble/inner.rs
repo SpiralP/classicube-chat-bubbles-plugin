@@ -4,8 +4,8 @@ use classicube_sys::{Matrix, OwnedTexture, Vec3, MATH_DEG2RAD};
 use std::os::raw::c_float;
 use tracing::warn;
 
-pub const BUBBLE_WIDTH: u8 = 4;
-// pub const BUBBLE_HEIGHT: u8 = 1;
+// pub const BUBBLE_WIDTH: u8 = 4;
+pub const BUBBLE_HEIGHT: u8 = 1;
 
 pub struct InnerBubble {
     /// (front, back)
@@ -21,12 +21,10 @@ impl InnerBubble {
     }
 
     pub fn update_transform(&mut self, position: Vec3, rotation: Vec3) {
-        let width = self.textures.0.as_texture().Width;
+        let height = self.textures.0.as_texture().Height;
 
-        // let ratio = width as f32 / height as f32;
-        let width = BUBBLE_WIDTH as f32 / width as f32;
-        // let height = ratio * width;
-        let scale = Vec3::create(width, width, 1.0);
+        let ratio = BUBBLE_HEIGHT as f32 / height as f32;
+        let scale = Vec3::create(ratio, ratio, 1.0);
 
         let translation = Matrix::translate(position.X, position.Y, position.Z);
         let scale = Matrix::scale(scale.X, scale.Y, scale.Z);

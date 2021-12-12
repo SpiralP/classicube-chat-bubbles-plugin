@@ -38,8 +38,8 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
                 Drawer2D_TextHeight(&mut text_args)
             };
 
-            let width = text_width + (LEFT_WIDTH as c_int) * 2 + 2;
-            let height = text_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
+            let width = text_width + (LEFT_WIDTH as c_int) * 2 + 4;
+            let height = text_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 4;
 
             debug!(?text_width, ?text_height, ?width, ?height);
 
@@ -100,8 +100,10 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
 pub fn get_transform(entity: &Entity) -> Result<(Vec3, Vec3)> {
     let inner = entity.get_inner();
 
-    let bubble_y = entity.get_model_name_y() + (1.0 / 32.0) * inner.NameTex.Height as f32;
-    let position = Vec3::transform_y(bubble_y, inner.Transform);
+    let bubble_y = entity.get_model_name_y() + (1.0 / 32.0) * inner.NameTex.Height as f32
+        - 16.0 * (1.0 / 32.0);
+    let mut position = entity.get_position();
+    position.Y += bubble_y;
 
     let rot = entity.get_rot();
     let rotation = Vec3::create(rot[0] + entity.get_head()[0], rot[1], rot[2]);
