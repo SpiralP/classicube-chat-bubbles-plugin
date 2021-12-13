@@ -94,7 +94,9 @@ impl PlayerChatEventListener for Bubble {
             }
 
             PlayerChatEvent::InputTextChanged(text) => {
-                if !text.is_empty() {
+                if text.is_empty() {
+                    self.typing = None;
+                } else {
                     self.typing = Some(InnerBubble::new(text));
                 }
             }
