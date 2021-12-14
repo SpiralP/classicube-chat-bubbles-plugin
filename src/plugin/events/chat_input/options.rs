@@ -21,8 +21,8 @@ pub fn get_input_button(key: KeyBind) -> Option<InputButtons> {
             name.as_ptr(),
             KeyBind_Defaults[key as usize] as c_int,
             input_names.as_ptr(),
-            InputButtons_INPUT_COUNT,
-        )
+            InputButtons_INPUT_COUNT as _,
+        ) as InputButtons
     };
     if mapping != InputButtons_KEY_ESCAPE {
         Some(mapping)

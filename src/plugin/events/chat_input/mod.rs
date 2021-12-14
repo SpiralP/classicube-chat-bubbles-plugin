@@ -26,10 +26,10 @@ thread_local!(
 );
 
 pub fn initialize() {
-    let keybind_open_chat = get_input_button(KeyBind__KEYBIND_CHAT);
+    let keybind_open_chat = get_input_button(KeyBind__KEYBIND_CHAT as _);
     let is_keybind_open_chat =
         move |key: InputButtons| keybind_open_chat.map(|k| key == k).unwrap_or(false);
-    let keybind_send_chat = get_input_button(KeyBind__KEYBIND_SEND_CHAT);
+    let keybind_send_chat = get_input_button(KeyBind__KEYBIND_SEND_CHAT as _);
     let is_keybind_send_chat =
         move |key: InputButtons| keybind_send_chat.map(|k| key == k).unwrap_or(false);
 
