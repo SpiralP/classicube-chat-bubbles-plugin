@@ -1,6 +1,10 @@
 name: Rust
 on: [push]
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows:
     name: Build Windows ${{ matrix.config.arch }}
