@@ -19,6 +19,7 @@
   - Make sure your ClassiCube is named "ClassiCube.exe" exactly and not something like "ClassiCube (1).exe"
 
 * `The specified procedure could not be found. (127)`
+* `The procedure entry point ... could not be located in the dynamic link library`
   - Try updating your ClassiCube from the launcher
 
 - `assertion failed: cell.borrow().is_none()`
