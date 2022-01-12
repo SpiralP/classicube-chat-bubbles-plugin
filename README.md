@@ -17,20 +17,14 @@
 
 - `The specified module could not be found. (126)`
   - Make sure your ClassiCube is named "ClassiCube.exe" exactly and not something like "ClassiCube (1).exe"
-
-* `The specified procedure could not be found. (127)`
-* `The procedure entry point ... could not be located in the dynamic link library`
+- `The specified procedure could not be found. (127)`
+- `The procedure entry point ... could not be located in the dynamic link library`
   - Try updating your ClassiCube from the launcher
-
 - `assertion failed: cell.borrow().is_none()`
   - Multiple plugin dll's are in the plugins folder, remove the duplicate.
-
-* `no suitable image found`
+- `no suitable image found`
   - You might be using the 32 bit ClassiCube app when you need to be using the 64 bit one
-
 - `[0607/183530.063:FATAL:tsf_text_store.cc(52)] Failed to initialize CategoryMgr.`
-
   - Using outdated chatsounds plugin
-
 - `A dynamic link library (DLL) initialization routine failed. (os error 1114)`
   - maybe another dll like ReShade is causing weirdness
