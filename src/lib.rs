@@ -10,7 +10,7 @@ use tracing::debug;
 extern "C" fn init() {
     // panic::install_hook();
 
-    logger::initialize(true, false);
+    logger::initialize(cfg!(debug_assertions), false);
 
     tracing::debug_span!("init").in_scope(|| {
         debug!(
