@@ -6,14 +6,14 @@ use crate::plugin::events::player_chat_event::PlayerChatEvent;
 use classicube_helpers::{entities::ENTITY_SELF_ID, events::input, WithBorrow};
 use classicube_sys::{
     Gui_GetInputGrab, InputButtons, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER,
-    InputButtons_KEY_SLASH, KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT,
+    InputButtons_KEY_SLASH, KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT, Screen,
 };
 use std::{
     cell::{Cell, RefCell},
     ptr::NonNull,
     rc::Rc,
 };
-use tracing::debug;
+use tracing::{debug, warn};
 
 thread_local!(
     static INPUT_DOWN_HANDLER: RefCell<Option<input::DownEventHandler>> = Default::default();
@@ -62,10 +62,25 @@ pub fn initialize() {
                         open.set(true);
                         debug!("chat open");
 
+                        fn sanity_check(screen: &Screen) -> bool {
+                            screen.grabsInput == 1
+                                && screen.blocksWorld == 0
+                                && screen.closable == 0
+                                && screen.dirty == 1
+                                && screen.maxVertices == 0
+                                && screen.vb == 0
+                                && screen.widgets == 0 as _
+                                && screen.numWidgets == 0
+                        }
                         unsafe {
                             if let Some(screen) = NonNull::new(Gui_GetInputGrab()) {
                                 debug!(?screen);
-                                chat_screen.set(Some(screen.cast::<ChatScreen>().as_ref()));
+
+                                if sanity_check(screen.as_ref()) {
+                                    chat_screen.set(Some(screen.cast::<ChatScreen>().as_ref()));
+                                } else {
+                                    warn!("Screen sanity_check failed");
+                                }
                             }
                         }
                     }
