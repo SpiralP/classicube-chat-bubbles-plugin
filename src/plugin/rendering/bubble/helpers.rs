@@ -1,4 +1,4 @@
-use crate::bubble_image_parts::*;
+use crate::{bubble_image_parts::*, plugin::rendering::bubble::inner::BUBBLE_HEIGHT};
 use anyhow::{Error, Result};
 use classicube_helpers::{entities::Entity, WithBorrow};
 use classicube_sys::{
@@ -101,11 +101,7 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
 }
 
 pub fn get_transform(entity: &Entity) -> Result<(Vec3, Vec3)> {
-    let inner = entity.get_inner();
-
-    let bubble_y = entity.get_model_name_y() * inner.ModelScale.Y
-        + (1.0 / 32.0) * inner.NameTex.Height as f32
-        - 16.0 * (1.0 / 32.0);
+    let bubble_y = entity.get_model_name_y() * entity.get_model_scale().Y - BUBBLE_HEIGHT;
     let mut position = entity.get_position();
     position.Y += bubble_y;
 
