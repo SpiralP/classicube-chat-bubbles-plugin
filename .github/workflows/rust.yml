@@ -34,11 +34,11 @@ jobs:
           scoop install --arch ${{ matrix.config.bits }}bit llvm
           echo "LIBCLANG_PATH=$HOME\scoop\apps\llvm\current\bin" >> $env:GITHUB_ENV
 
-      - name: Install nightly ${{ matrix.config.target }}
+      - name: Install rust stable ${{ matrix.config.target }}
         uses: actions-rs/toolchain@v1
         with:
           # we have to use this toolchain because "libclang.dll: invalid DLL (32-bit)"
-          toolchain: nightly-${{ matrix.config.target }}
+          toolchain: stable-${{ matrix.config.target }}
           target: ${{ matrix.config.target }}
           override: true
 
@@ -129,10 +129,10 @@ jobs:
               gcc-multilib g++-multilib \
             && echo "PKG_CONFIG_ALLOW_CROSS=1" >> $GITHUB_ENV
 
-      - name: Install nightly ${{ matrix.config.target }}
+      - name: Install rust stable ${{ matrix.config.target }}
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: ${{ matrix.config.target }}
           override: true
 
@@ -196,10 +196,10 @@ jobs:
   #       run: |
   #         docker build -t cross-aarch64 -f .github/cross-aarch64.Dockerfile .
 
-  #     - name: Install nightly ${{ matrix.config.target }}
+  #     - name: Install rust stable ${{ matrix.config.target }}
   #       uses: actions-rs/toolchain@v1
   #       with:
-  #         toolchain: nightly
+  #         toolchain: stable
   #         target: ${{ matrix.config.target }}
   #         override: true
 
@@ -252,10 +252,10 @@ jobs:
         run: |
           brew install aria2 cmake
 
-      - name: Install nightly ${{ matrix.config.target }}
+      - name: Install rust stable ${{ matrix.config.target }}
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           target: ${{ matrix.config.target }}
           override: true
 

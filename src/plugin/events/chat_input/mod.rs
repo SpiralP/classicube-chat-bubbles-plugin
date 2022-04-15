@@ -68,7 +68,7 @@ pub fn initialize() {
                                 && screen.closable == 0
                                 && screen.dirty == 1
                                 && screen.maxVertices == 0
-                                && screen.vb == 0
+                                && screen.vb == 0 as _
                                 && screen.widgets == 0 as _
                                 && screen.numWidgets == 0
                         }
