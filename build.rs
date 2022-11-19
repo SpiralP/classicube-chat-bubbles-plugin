@@ -1,10 +1,11 @@
-use classicube_sys::{PackedCol, PackedCol_A, PackedCol_Make};
 use std::{
     env,
     fs::{read_dir, File},
     io::Write,
     path::{Path, PathBuf},
 };
+
+use classicube_sys::{PackedCol, PackedCol_A, PackedCol_Make};
 
 const IMAGE_DIR: &str = "bubble_image_parts";
 
@@ -58,7 +59,7 @@ fn main() {
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let path = Path::new(&out_dir).join(format!("{}.rs", IMAGE_DIR));
-    let mut rust_code_file = File::create(&path).unwrap();
+    let mut rust_code_file = File::create(path).unwrap();
     writeln!(rust_code_file, "{}", code_parts.join("\n")).unwrap();
 }
 

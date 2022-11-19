@@ -1,10 +1,14 @@
+// TODO remove when with_borrow_mut stabilizes
+#![allow(unstable_name_collisions)]
+
 pub mod bubble_image_parts;
 pub mod logger;
 pub mod plugin;
 
+use std::{os::raw::c_int, ptr};
+
 use classicube_helpers::time;
 use classicube_sys::IGameComponent;
-use std::{os::raw::c_int, ptr};
 use tracing::debug;
 
 extern "C" fn init() {
