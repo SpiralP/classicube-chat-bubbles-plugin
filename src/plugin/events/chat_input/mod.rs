@@ -9,8 +9,9 @@ use std::{
 
 use classicube_helpers::{entities::ENTITY_SELF_ID, events::input};
 use classicube_sys::{
-    Gui_GetInputGrab, InputBind__BIND_CHAT, InputBind__BIND_SEND_CHAT, InputButtons,
-    InputButtons_CCKEY_ESCAPE, InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
+    Gui_GetInputGrab, Gui_GetScreen, GuiPriority_GUI_PRIORITY_CHAT, InputBind__BIND_CHAT,
+    InputBind__BIND_SEND_CHAT, InputButtons, InputButtons_CCKEY_ESCAPE,
+    InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
 };
 use tracing::{debug, warn};
 
@@ -65,21 +66,35 @@ pub fn initialize() {
                         open.set(true);
                         debug!("chat open");
 
-                        fn sanity_check(screen: &Screen) -> bool {
-                            screen.grabsInput == 1
-                                && screen.blocksWorld == 0
-                                && screen.closable == 0
-                                && screen.dirty == 1
-                                && screen.maxVertices == 0
-                                && screen.vb == 0 as _
-                                && screen.widgets == 0 as _
-                                && screen.numWidgets == 0
+                        unsafe fn sanity_check(screen: NonNull<Screen>) -> bool {
+                            unsafe {
+                                // The screen at GUI_PRIORITY_CHAT is the
+                                // ChatScreen singleton (registered by
+                                // ChatScreen_Show at startup). Pointer-equal
+                                // to the input-grab screen means it's chat
+                                // and not e.g. PauseScreen / InventoryScreen
+                                // / DisconnectScreen.
+                                if Gui_GetScreen(GuiPriority_GUI_PRIORITY_CHAT as _)
+                                    != screen.as_ptr()
+                                {
+                                    return false;
+                                }
+                                // Belt-and-braces field checks, since other
+                                // screens could in theory register at
+                                // PRIORITY_CHAT. ChatScreen never sets these.
+                                let s = screen.as_ref();
+                                s.grabsInput == 1
+                                    && s.blocksWorld == 0
+                                    && s.closable == 0
+                                    && s.widgets.is_null()
+                                    && s.numWidgets == 0
+                            }
                         }
                         unsafe {
                             if let Some(screen) = NonNull::new(Gui_GetInputGrab()) {
                                 debug!(?screen);
 
-                                if sanity_check(screen.as_ref()) {
+                                if sanity_check(screen) {
                                     chat_screen.set(Some(screen.cast::<ChatScreen>().as_ref()));
                                 } else {
                                     warn!("Screen sanity_check failed");

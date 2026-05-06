@@ -16,22 +16,25 @@
 
 use std::os::raw::{c_float, c_int};
 
-use classicube_sys::{
-    ChatInputWidget, FontDesc, GfxResourceID, ScreenVTABLE, TextWidget, Widget, cc_bool,
-};
+use classicube_sys::{ChatInputWidget, FontDesc, GfxResourceID, ScreenVTABLE, Widget, cc_bool};
 
 #[repr(C)]
 pub struct ChatScreen {
+    // Screen_Body (ClassiCube/src/Gui.h)
     pub VTABLE: *const ScreenVTABLE,
     pub grabsInput: cc_bool,
     pub blocksWorld: cc_bool,
     pub closable: cc_bool,
     pub dirty: cc_bool,
-    pub maxVertices: ::std::os::raw::c_int,
+    pub maxVertices: c_int,
     pub vb: GfxResourceID,
     pub widgets: *mut *mut Widget,
-    pub numWidgets: ::std::os::raw::c_int,
+    pub numWidgets: c_int,
+    pub selectedI: c_int,
+    pub maxWidgets: c_int,
+    pub widgetsPerPage: c_int,
 
+    // ChatScreen body (ClassiCube/src/Screens.c)
     pub chatAcc: c_float,
     pub suppressNextPress: cc_bool,
     pub chatIndex: c_int,
@@ -39,20 +42,11 @@ pub struct ChatScreen {
     pub paddingY: c_int,
     pub lastDownloadStatus: c_int,
     pub chatFont: FontDesc,
-    pub announcementFont: FontDesc,
-    pub bigAnnouncementFont: FontDesc,
-    pub smallAnnouncementFont: FontDesc,
-    pub announcement: TextWidget,
-    pub bigAnnouncement: TextWidget,
-    pub smallAnnouncement: TextWidget,
     pub input: ChatInputWidget,
-    /* status: TextGroupWidget,
-     * bottomRight: TextGroupWidget,
-     * chat: TextGroupWidget,
+    /* chat: TextGroupWidget,
      * clientStatus: TextGroupWidget,
      * altText: SpecialInputWidget,
-     * Texture statusTextures[CHAT_MAX_STATUS];
-     * Texture bottomRightTextures[CHAT_MAX_BOTTOMRIGHT];
-     * Texture clientStatusTextures[CHAT_MAX_CLIENTSTATUS];
-     * Texture chatTextures[TEXTGROUPWIDGET_MAX_LINES]; */
+     * #ifdef CC_BUILD_TOUCH: send/cancel/more ButtonWidget,
+     * Texture clientStatusTextures[CHAT_MAX_CLIENTSTATUS],
+     * Texture chatTextures[GUI_MAX_CHATLINES] */
 }
