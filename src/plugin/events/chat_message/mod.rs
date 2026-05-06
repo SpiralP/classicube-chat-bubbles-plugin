@@ -3,7 +3,6 @@ use classicube_helpers::{
     entities::ENTITY_SELF_ID,
     events::chat::{ChatReceivedEvent, ChatReceivedEventHandler},
     tab_list::TabList,
-    WithBorrow,
 };
 use classicube_sys::{MsgType_MSG_TYPE_NORMAL, Server};
 use std::cell::RefCell;

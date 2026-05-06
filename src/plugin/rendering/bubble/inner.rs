@@ -21,18 +21,18 @@ impl InnerBubble {
     }
 
     pub fn update_transform(&mut self, position: Vec3, rotation: Vec3) {
-        let height = self.textures.0.as_texture().Height;
+        let height = self.textures.0.as_texture().height;
 
         let ratio = BUBBLE_HEIGHT / height as f32;
         let scale = Vec3::create(ratio, ratio, 1.0);
 
-        let translation = Matrix::translate(position.X, position.Y + 0.5, position.Z);
-        let scale = Matrix::scale(scale.X, scale.Y, scale.Z);
+        let translation = Matrix::translate(position.x, position.y + 0.5, position.z);
+        let scale = Matrix::scale(scale.x, scale.y, scale.z);
 
         self.transform = scale
             * Matrix::rotate_z(180.0 * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_x(-rotation.X * MATH_DEG2RAD as c_float)
-            * Matrix::rotate_y(-rotation.Y * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_x(-rotation.x * MATH_DEG2RAD as c_float)
+            * Matrix::rotate_y(-rotation.y * MATH_DEG2RAD as c_float)
             * translation;
     }
 

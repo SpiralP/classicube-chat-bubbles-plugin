@@ -63,7 +63,7 @@ impl Bubble {
 
                 Gfx_SetFaceCulling(0);
 
-                Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &Gfx.View);
+                Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &raw const Gfx.View);
             }
         }
     }

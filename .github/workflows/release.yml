@@ -1,0 +1,33 @@
+name: release
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read # for build's checkout
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    if: "${{ ! startsWith(github.event.head_commit.message, 'chore(release): ') }}"
+    with:
+      release: true
+
+  release:
+    uses: SpiralP/github-reusable-workflows/.github/workflows/release.yml@338cc4a77d16b2a36bbdab9f0d19f2d3e8cf183f # main
+    needs: build
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false # do not cancel in-progress jobs
+    permissions: {} # none needed, uses a custom GitHub App token
+    with:
+      extends: ./.github/semantic-release.json
+      replace-files: |
+        Cargo.lock
+        Cargo.toml
+      assets: "*.{so,dll,dylib}"
+    secrets:
+      app-client-id: ${{ secrets.APP_CLIENT_ID }}
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}

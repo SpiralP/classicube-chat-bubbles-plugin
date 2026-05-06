@@ -1,6 +1,3 @@
-// TODO remove when with_borrow_mut stabilizes
-#![allow(unstable_name_collisions)]
-
 pub mod bubble_image_parts;
 pub mod logger;
 pub mod plugin;
@@ -61,10 +58,12 @@ extern "C" fn on_new_map_loaded() {
     });
 }
 
-#[no_mangle]
+#[allow(non_upper_case_globals)]
+#[unsafe(no_mangle)]
 pub static Plugin_ApiVersion: c_int = 1;
 
-#[no_mangle]
+#[allow(non_upper_case_globals)]
+#[unsafe(no_mangle)]
 pub static mut Plugin_Component: IGameComponent = IGameComponent {
     // Called when the game is being loaded.
     Init: Some(init),

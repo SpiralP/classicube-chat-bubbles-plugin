@@ -1,4 +1,3 @@
-use classicube_helpers::WithBorrow;
 use std::{
     cell::RefCell,
     rc::{Rc, Weak},

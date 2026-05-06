@@ -3,7 +3,7 @@ pub mod message;
 use self::message::RELAY_CHANNEL;
 use crate::plugin::networking::message::RelayMessage;
 use anyhow::Error;
-use classicube_helpers::{async_manager, WithBorrow};
+use classicube_helpers::async_manager;
 use classicube_relay::{packet::MapScope, RelayListener};
 use std::cell::RefCell;
 use tracing::{error, trace};

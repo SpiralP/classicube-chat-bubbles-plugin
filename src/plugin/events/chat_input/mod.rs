@@ -3,10 +3,10 @@ pub mod options;
 
 use self::{chat_screen::ChatScreen, options::get_input_button};
 use crate::plugin::events::player_chat_event::PlayerChatEvent;
-use classicube_helpers::{entities::ENTITY_SELF_ID, events::input, WithBorrow};
+use classicube_helpers::{entities::ENTITY_SELF_ID, events::input};
 use classicube_sys::{
-    Gui_GetInputGrab, InputButtons, InputButtons_KEY_ESCAPE, InputButtons_KEY_KP_ENTER,
-    InputButtons_KEY_SLASH, KeyBind__KEYBIND_CHAT, KeyBind__KEYBIND_SEND_CHAT, Screen,
+    Gui_GetInputGrab, InputBind__BIND_CHAT, InputBind__BIND_SEND_CHAT, InputButtons,
+    InputButtons_CCKEY_ESCAPE, InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -16,20 +16,20 @@ use std::{
 use tracing::{debug, warn};
 
 thread_local!(
-    static INPUT_DOWN_HANDLER: RefCell<Option<input::DownEventHandler>> = Default::default();
+    static INPUT_DOWN_HANDLER: RefCell<Option<input::Down2EventHandler>> = Default::default();
 );
 thread_local!(
     static INPUT_PRESS_HANDLER: RefCell<Option<input::PressEventHandler>> = Default::default();
 );
 thread_local!(
-    static INPUT_UP_HANDLER: RefCell<Option<input::UpEventHandler>> = Default::default();
+    static INPUT_UP_HANDLER: RefCell<Option<input::Up2EventHandler>> = Default::default();
 );
 
 pub fn initialize() {
-    let keybind_open_chat = get_input_button(KeyBind__KEYBIND_CHAT as _);
+    let keybind_open_chat = get_input_button(InputBind__BIND_CHAT as _);
     let is_keybind_open_chat =
         move |key: InputButtons| keybind_open_chat.map(|k| key == k).unwrap_or(false);
-    let keybind_send_chat = get_input_button(KeyBind__KEYBIND_SEND_CHAT as _);
+    let keybind_send_chat = get_input_button(InputBind__BIND_SEND_CHAT as _);
     let is_keybind_send_chat =
         move |key: InputButtons| keybind_send_chat.map(|k| key == k).unwrap_or(false);
 
@@ -40,17 +40,17 @@ pub fn initialize() {
         let open = open.clone();
         let chat_screen = chat_screen.clone();
         INPUT_DOWN_HANDLER.with_borrow_mut(move |option| {
-            let mut input_down_handler = input::DownEventHandler::new();
-            input_down_handler.on(move |&input::DownEvent { key, repeating }| {
+            let mut input_down_handler = input::Down2EventHandler::new();
+            input_down_handler.on(move |&input::Down2Event { key, repeating, .. }| {
                 if open.get() {
                     // chat closed
                     if !repeating
                         && (is_keybind_send_chat(key)
-                            || key == InputButtons_KEY_KP_ENTER
-                            || key == InputButtons_KEY_ESCAPE)
+                            || key == InputButtons_CCKEY_KP_ENTER
+                            || key == InputButtons_CCKEY_ESCAPE)
                     {
                         open.set(false);
-                        // let close = key == InputButtons_KEY_ESCAPE;
+                        // let close = key == InputButtons_CCKEY_ESCAPE;
                         debug!("chat close");
                         PlayerChatEvent::ChatClosed.emit(ENTITY_SELF_ID);
                     } else {
@@ -58,7 +58,7 @@ pub fn initialize() {
                     }
                 } else {
                     // chat opened
-                    if !repeating && (is_keybind_open_chat(key) || key == InputButtons_KEY_SLASH) {
+                    if !repeating && (is_keybind_open_chat(key) || key == InputButtons_CCKEY_SLASH) {
                         open.set(true);
                         debug!("chat open");
 
@@ -103,8 +103,8 @@ pub fn initialize() {
     }
 
     INPUT_UP_HANDLER.with_borrow_mut(move |option| {
-        let mut input_up_handler = input::UpEventHandler::new();
-        input_up_handler.on(move |&input::UpEvent { .. }| {
+        let mut input_up_handler = input::Up2EventHandler::new();
+        input_up_handler.on(move |&input::Up2Event { .. }| {
             check_input_changed(open.get(), chat_screen.get());
         });
         *option = Some(input_up_handler);

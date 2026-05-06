@@ -6,10 +6,7 @@ use crate::plugin::{
     events::player_chat_event::listener::StartStopListening,
     rendering::{bubble::Bubble, render_hook::renderable::StartStopRendering},
 };
-use classicube_helpers::{
-    entities::{Entities, Entity},
-    WithBorrow,
-};
+use classicube_helpers::entities::{Entities, Entity};
 use std::{
     cell::RefCell,
     collections::HashMap,

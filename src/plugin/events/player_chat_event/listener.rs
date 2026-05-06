@@ -1,5 +1,4 @@
 use super::PlayerChatEvent;
-use classicube_helpers::WithBorrow;
 use std::{
     cell::RefCell,
     collections::HashMap,

@@ -1,7 +1,7 @@
 [package]
 name = "classicube-chat-bubbles-plugin"
 version = "0.3.1"
-edition = "2021"
+edition = "2024"
 publish = false
 
 [lib]
@@ -12,7 +12,7 @@ anyhow = { version = "1", features = ["backtrace"] }
 bincode = "1"
 classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers.git" }
 classicube-relay = { git = "https://github.com/SpiralP/rust-classicube-relay.git" }
-classicube-sys = { git = "https://github.com/SpiralP/rust-classicube-sys.git" }
+classicube-sys = "=5.0.0"
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 tracing = "0.1"
@@ -20,10 +20,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 zstd = "0.11"
 
 [build-dependencies]
-classicube-sys = { git = "https://github.com/SpiralP/rust-classicube-sys.git" }
+classicube-sys = "=5.0.0"
 png = "0.17"
-
-
-[package.metadata.release]
-pre-release-commit-message = "Release {{version}}"
-tag-message = "Release version {{version}}"

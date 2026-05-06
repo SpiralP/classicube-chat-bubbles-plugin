@@ -1,13 +1,13 @@
 use classicube_sys::{
-    keybindNames, InputButtons, InputButtons_INPUT_COUNT, InputButtons_KEY_ESCAPE, Input_Names,
-    KeyBind, KeyBind_Defaults, Options_GetEnum,
+    bindNames, InputBind, InputButtons, InputButtons_CCKEY_ESCAPE, InputButtons_INPUT_COUNT,
+    Input_StorageNames, KeyBind_Defaults, Options_GetEnum,
 };
 use std::{ffi::CString, os::raw::c_int};
 
-pub fn get_input_button(key: KeyBind) -> Option<InputButtons> {
-    let name = CString::new(format!("key-{}", keybindNames[key as usize])).unwrap();
+pub fn get_input_button(key: InputBind) -> Option<InputButtons> {
+    let name = CString::new(format!("key-{}", bindNames[key as usize])).unwrap();
 
-    let input_names = Input_Names
+    let input_names = Input_StorageNames
         .iter()
         .map(|&name| CString::new(name).unwrap())
         .collect::<Vec<_>>();
@@ -19,12 +19,12 @@ pub fn get_input_button(key: KeyBind) -> Option<InputButtons> {
     let mapping = unsafe {
         Options_GetEnum(
             name.as_ptr(),
-            KeyBind_Defaults[key as usize] as c_int,
+            KeyBind_Defaults[key as usize].button1 as c_int,
             input_names.as_ptr(),
             InputButtons_INPUT_COUNT as _,
         ) as InputButtons
     };
-    if mapping != InputButtons_KEY_ESCAPE {
+    if mapping != InputButtons_CCKEY_ESCAPE {
         Some(mapping)
     } else {
         None

@@ -1,9 +1,6 @@
 pub mod vertex_buffer;
 
-use classicube_helpers::{
-    events::gfx::{ContextLostEventHandler, ContextRecreatedEventHandler},
-    WithBorrow,
-};
+use classicube_helpers::events::gfx::{ContextLostEventHandler, ContextRecreatedEventHandler};
 use std::cell::RefCell;
 
 thread_local!(
