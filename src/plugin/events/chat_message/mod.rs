@@ -1,12 +1,14 @@
-use super::player_chat_event::PlayerChatEvent;
+use std::cell::RefCell;
+
 use classicube_helpers::{
     entities::ENTITY_SELF_ID,
     events::chat::{ChatReceivedEvent, ChatReceivedEventHandler},
     tab_list::TabList,
 };
 use classicube_sys::{MsgType_MSG_TYPE_NORMAL, Server};
-use std::cell::RefCell;
 use tracing::{debug, warn};
+
+use super::player_chat_event::PlayerChatEvent;
 
 thread_local!(
     static CHAT_RECEIVED_HANDLER: RefCell<Option<ChatReceivedEventHandler>> = Default::default();

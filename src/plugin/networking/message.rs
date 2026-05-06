@@ -1,9 +1,10 @@
-use crate::plugin::events::player_chat_event::PlayerChatEvent;
-use anyhow::{ensure, Result};
+use anyhow::{Result, ensure};
 use classicube_helpers::entities::ENTITY_SELF_ID;
-use classicube_relay::{packet::Scope, Stream};
+use classicube_relay::{Stream, packet::Scope};
 use serde::{Deserialize, Serialize};
 use tracing::trace;
+
+use crate::plugin::events::player_chat_event::PlayerChatEvent;
 
 pub const RELAY_CHANNEL: u8 = 202;
 

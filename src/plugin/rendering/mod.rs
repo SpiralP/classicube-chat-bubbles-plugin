@@ -2,17 +2,19 @@ pub mod bubble;
 pub mod context;
 pub mod render_hook;
 
-use crate::plugin::{
-    events::player_chat_event::listener::StartStopListening,
-    rendering::{bubble::Bubble, render_hook::renderable::StartStopRendering},
-};
-use classicube_helpers::entities::{Entities, Entity};
 use std::{
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
 };
+
+use classicube_helpers::entities::{Entities, Entity};
 use tracing::debug;
+
+use crate::plugin::{
+    events::player_chat_event::listener::StartStopListening,
+    rendering::{bubble::Bubble, render_hook::renderable::StartStopRendering},
+};
 
 thread_local!(
     static ENTITIES: RefCell<Option<Entities>> = Default::default();

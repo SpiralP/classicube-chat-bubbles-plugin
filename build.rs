@@ -1,6 +1,6 @@
 use std::{
     env,
-    fs::{read_dir, File},
+    fs::{File, read_dir},
     io::Write,
     path::{Path, PathBuf},
 };

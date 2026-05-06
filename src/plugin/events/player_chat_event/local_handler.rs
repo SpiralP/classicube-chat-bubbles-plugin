@@ -1,13 +1,15 @@
-use super::PlayerChatEvent;
-use crate::plugin::networking::message::RelayMessage;
-use classicube_helpers::async_manager;
-use classicube_relay::packet::MapScope;
-use futures::future::AbortHandle;
 use std::{
     cell::{Cell, RefCell},
     time::{Duration, Instant},
 };
+
+use classicube_helpers::async_manager;
+use classicube_relay::packet::MapScope;
+use futures::future::AbortHandle;
 use tracing::{debug, error};
+
+use super::PlayerChatEvent;
+use crate::plugin::networking::message::RelayMessage;
 
 thread_local!(
     static DEBOUNCE_FUTURE: RefCell<Option<AbortHandle>> = Default::default();

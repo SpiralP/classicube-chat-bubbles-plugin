@@ -1,8 +1,10 @@
-use super::helpers::{create_textures, get_transform};
-use classicube_helpers::entities::Entity;
-use classicube_sys::{Matrix, OwnedTexture, Vec3, MATH_DEG2RAD};
 use std::os::raw::c_float;
+
+use classicube_helpers::entities::Entity;
+use classicube_sys::{MATH_DEG2RAD, Matrix, OwnedTexture, Vec3};
 use tracing::warn;
+
+use super::helpers::{create_textures, get_transform};
 
 // pub const BUBBLE_WIDTH: u8 = 4;
 pub const BUBBLE_HEIGHT: f32 = 0.5;

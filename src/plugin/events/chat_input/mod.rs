@@ -1,19 +1,21 @@
 pub mod chat_screen;
 pub mod options;
 
-use self::{chat_screen::ChatScreen, options::get_input_button};
-use crate::plugin::events::player_chat_event::PlayerChatEvent;
-use classicube_helpers::{entities::ENTITY_SELF_ID, events::input};
-use classicube_sys::{
-    Gui_GetInputGrab, InputBind__BIND_CHAT, InputBind__BIND_SEND_CHAT, InputButtons,
-    InputButtons_CCKEY_ESCAPE, InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
-};
 use std::{
     cell::{Cell, RefCell},
     ptr::NonNull,
     rc::Rc,
 };
+
+use classicube_helpers::{entities::ENTITY_SELF_ID, events::input};
+use classicube_sys::{
+    Gui_GetInputGrab, InputBind__BIND_CHAT, InputBind__BIND_SEND_CHAT, InputButtons,
+    InputButtons_CCKEY_ESCAPE, InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
+};
 use tracing::{debug, warn};
+
+use self::{chat_screen::ChatScreen, options::get_input_button};
+use crate::plugin::events::player_chat_event::PlayerChatEvent;
 
 thread_local!(
     static INPUT_DOWN_HANDLER: RefCell<Option<input::Down2EventHandler>> = Default::default();
@@ -58,7 +60,8 @@ pub fn initialize() {
                     }
                 } else {
                     // chat opened
-                    if !repeating && (is_keybind_open_chat(key) || key == InputButtons_CCKEY_SLASH) {
+                    if !repeating && (is_keybind_open_chat(key) || key == InputButtons_CCKEY_SLASH)
+                    {
                         open.set(true);
                         debug!("chat open");
 

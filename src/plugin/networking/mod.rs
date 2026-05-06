@@ -1,12 +1,14 @@
 pub mod message;
 
-use self::message::RELAY_CHANNEL;
-use crate::plugin::networking::message::RelayMessage;
+use std::cell::RefCell;
+
 use anyhow::Error;
 use classicube_helpers::async_manager;
-use classicube_relay::{packet::MapScope, RelayListener};
-use std::cell::RefCell;
+use classicube_relay::{RelayListener, packet::MapScope};
 use tracing::{error, trace};
+
+use self::message::RELAY_CHANNEL;
+use crate::plugin::networking::message::RelayMessage;
 
 thread_local!(
     static RELAY_LISTENER: RefCell<Option<RelayListener>> = Default::default();

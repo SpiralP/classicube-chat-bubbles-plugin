@@ -1,22 +1,24 @@
 mod helpers;
 mod inner;
 
-use self::inner::InnerBubble;
-use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
-use crate::plugin::events::player_chat_event::{
-    listener::PlayerChatEventListener, PlayerChatEvent,
-};
-use classicube_helpers::entities::Entity;
-use classicube_sys::{
-    Gfx, Gfx_LoadMatrix, Gfx_SetAlphaTest, Gfx_SetFaceCulling, Gfx_SetTexturing,
-    MatrixType__MATRIX_VIEW,
-};
 use std::{
     collections::VecDeque,
     rc::Weak,
     time::{Duration, Instant},
 };
+
+use classicube_helpers::entities::Entity;
+use classicube_sys::{
+    Gfx, Gfx_LoadMatrix, Gfx_SetAlphaTest, Gfx_SetFaceCulling, Gfx_SetTexturing,
+    MatrixType__MATRIX_VIEW,
+};
 use tracing::warn;
+
+use self::inner::InnerBubble;
+use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
+use crate::plugin::events::player_chat_event::{
+    PlayerChatEvent, listener::PlayerChatEventListener,
+};
 
 pub struct Bubble {
     entity: Weak<Entity>,

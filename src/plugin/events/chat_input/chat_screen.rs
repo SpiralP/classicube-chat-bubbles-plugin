@@ -14,10 +14,11 @@
     clippy::useless_transmute
 )]
 
-use classicube_sys::{
-    cc_bool, ChatInputWidget, FontDesc, GfxResourceID, ScreenVTABLE, TextWidget, Widget,
-};
 use std::os::raw::{c_float, c_int};
+
+use classicube_sys::{
+    ChatInputWidget, FontDesc, GfxResourceID, ScreenVTABLE, TextWidget, Widget, cc_bool,
+};
 
 #[repr(C)]
 pub struct ChatScreen {

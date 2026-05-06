@@ -1,10 +1,11 @@
 pub mod listener;
 pub mod local_handler;
 
-use self::listener::with_all_listeners;
 use classicube_helpers::entities::ENTITY_SELF_ID;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
+
+use self::listener::with_all_listeners;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PlayerChatEvent {

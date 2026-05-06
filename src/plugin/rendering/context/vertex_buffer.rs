@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 
+use std::cell::RefCell;
+
 use classicube_helpers::WithInner;
 use classicube_sys::{
     Gfx_BindTexture, Gfx_SetVertexFormat, Gfx_UpdateDynamicVb_IndexedTris, OwnedGfxVertexBuffer,
-    PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED, VertexTextured, PACKEDCOL_WHITE,
+    PACKEDCOL_WHITE, PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED, VertexTextured,
 };
-use std::cell::RefCell;
 use tracing::warn;
 
 thread_local!(

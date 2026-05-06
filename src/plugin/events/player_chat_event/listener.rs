@@ -1,9 +1,10 @@
-use super::PlayerChatEvent;
 use std::{
     cell::RefCell,
     collections::HashMap,
     rc::{Rc, Weak},
 };
+
+use super::PlayerChatEvent;
 
 pub trait PlayerChatEventListener {
     fn handle_event(&mut self, event: &PlayerChatEvent);

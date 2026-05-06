@@ -1,8 +1,9 @@
-use classicube_sys::{
-    bindNames, InputBind, InputButtons, InputButtons_CCKEY_ESCAPE, InputButtons_INPUT_COUNT,
-    Input_StorageNames, KeyBind_Defaults, Options_GetEnum,
-};
 use std::{ffi::CString, os::raw::c_int};
+
+use classicube_sys::{
+    Input_StorageNames, InputBind, InputButtons, InputButtons_CCKEY_ESCAPE,
+    InputButtons_INPUT_COUNT, KeyBind_Defaults, Options_GetEnum, bindNames,
+};
 
 pub fn get_input_button(key: InputBind) -> Option<InputButtons> {
     let name = CString::new(format!("key-{}", bindNames[key as usize])).unwrap();
