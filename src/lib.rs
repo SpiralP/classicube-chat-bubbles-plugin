@@ -1,5 +1,6 @@
 pub mod bubble_image_parts;
 pub mod logger;
+mod panic;
 pub mod plugin;
 
 use std::{os::raw::c_int, ptr};
@@ -9,7 +10,7 @@ use classicube_sys::IGameComponent;
 use tracing::debug;
 
 extern "C" fn init() {
-    // panic::install_hook();
+    panic::install_hook();
 
     logger::initialize(cfg!(debug_assertions), false);
 
