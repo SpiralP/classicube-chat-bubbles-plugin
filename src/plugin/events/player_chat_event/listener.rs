@@ -25,6 +25,12 @@ pub fn with_all_listeners<R, F: FnOnce(&mut HashMap<u8, Vec<Inner>>) -> R>(f: F)
     EVENT_LISTENERS.with_borrow_mut(|listeners| f(listeners))
 }
 
+pub fn free() {
+    EVENT_LISTENERS.with_borrow_mut(|listeners| {
+        listeners.clear();
+    });
+}
+
 impl<T> StartStopListening for Rc<RefCell<T>>
 where
     T: PlayerChatEventListener,

@@ -181,4 +181,7 @@ pub fn free() {
     INPUT_DOWN_HANDLER.with_borrow_mut(move |option| {
         drop(option.take());
     });
+    LAST_INPUT.with_borrow_mut(|option| {
+        option.take();
+    });
 }

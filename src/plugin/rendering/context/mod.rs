@@ -36,5 +36,11 @@ pub fn initialize() {
 }
 
 pub fn free() {
+    CONTEXT_LOST_HANDLER.with_borrow_mut(|option| {
+        option.take();
+    });
+    CONTEXT_RECREATED_HANDLER.with_borrow_mut(|option| {
+        option.take();
+    });
     vertex_buffer::context_lost();
 }

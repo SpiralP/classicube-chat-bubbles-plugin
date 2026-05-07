@@ -39,4 +39,5 @@ impl PlayerChatEvent {
 
 pub fn free() {
     local_handler::free();
+    listener::free();
 }

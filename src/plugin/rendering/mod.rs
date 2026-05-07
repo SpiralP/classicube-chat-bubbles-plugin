@@ -65,6 +65,12 @@ pub fn initialize() {
 }
 
 pub fn free() {
+    // Drop ENTITIES first so its on_added/on_removed callbacks stop firing
+    // before we drain BUBBLES out from under them.
+    ENTITIES.with_borrow_mut(|option| {
+        option.take();
+    });
+
     BUBBLES.with_borrow_mut(|map| {
         for o in map.drain() {
             drop(o)

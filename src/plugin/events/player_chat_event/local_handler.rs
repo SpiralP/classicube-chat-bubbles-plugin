@@ -80,4 +80,5 @@ pub fn free() {
             handle.abort()
         }
     });
+    LAST_SEND.set(None);
 }
