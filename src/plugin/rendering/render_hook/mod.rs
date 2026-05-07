@@ -8,6 +8,38 @@ use classicube_sys::{
     screen::Priority,
 };
 
+/// Mirror ClassiCube's per-backend `Gfx_CalcOrthoMatrix`, picking the formula
+/// at compile time. `Matrix::orthographic` is GL-flavored (clip-space z `[-1, 1]`)
+/// — feeding it to D3D9/D3D11 (clip-space z `[0, 1]`) puts every 2D vertex
+/// outside the clip range and the rasterizer culls the entire HUD.
+///
+/// `Gfx_CalcOrthoMatrix` itself is not `CC_API` and so isn't exported from
+/// `ClassiCube.dll` on Windows, so we replicate it here.
+fn calc_ortho_matrix(width: f32, height: f32, z_near: f32, z_far: f32) -> Matrix {
+    let mut m = Matrix::IDENTITY;
+    m.row1.x = 2.0 / width;
+    m.row2.y = -2.0 / height;
+
+    if cfg!(target_os = "windows") {
+        // D3D9 / D3D11: clip-space z is [0, 1]; D3D9 also wants a half-pixel
+        // x/y nudge. Mirrors `Graphics_D3D9.c:756` (z math is identical to
+        // `Graphics_D3D11.c:507`; the half-pixel nudge is harmless on D3D11).
+        let adjust_x = 0.5 * (2.0 / width);
+        let adjust_y = 0.5 * (-2.0 / height);
+        m.row3.z = 1.0 / (z_near - z_far);
+        m.row4.x = -1.0 - adjust_x;
+        m.row4.y = 1.0 - adjust_y;
+        m.row4.z = z_near / (z_near - z_far);
+    } else {
+        // GL clip-space z is [-1, 1]. Mirrors `_GLShared.h:289`.
+        m.row3.z = -2.0 / (z_far - z_near);
+        m.row4.x = -1.0;
+        m.row4.y = 1.0;
+        m.row4.z = -(z_far + z_near) / (z_far - z_near);
+    }
+    m
+}
+
 /// Called from `Gui_RenderGui` between `Gfx_Begin2D` and the HUD screen's
 /// render. Switch to 3D-style state, draw bubbles, then restore 2D state so
 /// the HUD (and any later screens) see the state they expect.
@@ -21,13 +53,11 @@ unsafe extern "C" fn render(_: *mut c_void, _: f32) {
         renderable::render_all();
 
         // Reconstruct the 2D ortho the engine's `Gfx_Begin2D` had loaded.
-        // `Matrix::orthographic(0, w, 0, h, -100, 1000)` matches the GL backend's
-        // `Gfx_CalcOrthoMatrix`. Other backends (D3D9/Soft) use a slightly
-        // different z mapping, but depth test is off in 2D mode so the z
-        // difference has no visible effect.
+        // Must use a backend-correct formula: `Matrix::orthographic` is
+        // GL-only and breaks clip-space culling on D3D9/D3D11.
         let width = Game.Width as f32;
         let height = Game.Height as f32;
-        let ortho = Matrix::orthographic(0.0, width, 0.0, height, -100.0, 1000.0);
+        let ortho = calc_ortho_matrix(width, height, -100.0, 1000.0);
         Gfx_LoadMatrix(MatrixType__MATRIX_PROJ, &ortho);
         Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &Matrix::IDENTITY);
 
