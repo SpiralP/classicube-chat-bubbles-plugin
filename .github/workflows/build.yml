@@ -52,7 +52,7 @@ jobs:
         run: |
           cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
 
-      - uses: taiki-e/install-action@db5fb34fa772531a3ece57ca434f579eb334e0fb # v2.75.30
+      - uses: taiki-e/install-action@3fa6878dc4ae603f73960271565a082bf196ab96 # v2.77.2
         with:
           tool: cargo-nextest
 
@@ -106,7 +106,7 @@ jobs:
           cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
           file 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.so'
 
-      - uses: taiki-e/install-action@db5fb34fa772531a3ece57ca434f579eb334e0fb # v2.75.30
+      - uses: taiki-e/install-action@3fa6878dc4ae603f73960271565a082bf196ab96 # v2.77.2
         with:
           tool: cargo-nextest
 
@@ -148,7 +148,7 @@ jobs:
           cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
           file 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.dylib'
 
-      - uses: taiki-e/install-action@db5fb34fa772531a3ece57ca434f579eb334e0fb # v2.75.30
+      - uses: taiki-e/install-action@3fa6878dc4ae603f73960271565a082bf196ab96 # v2.77.2
         with:
           tool: cargo-nextest
 
