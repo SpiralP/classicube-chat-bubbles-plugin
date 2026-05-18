@@ -181,7 +181,7 @@ dependencies = [
 [[package]]
 name = "classicube-relay"
 version = "0.1.0"
-source = "git+https://github.com/SpiralP/rust-classicube-relay.git#b6c96f696a638ad4d7a945128c9434026e1d5e71"
+source = "git+https://github.com/SpiralP/rust-classicube-relay.git#fcfe6b18d0b0fdefa87b54eb060681158e6534ef"
 dependencies = [
  "byteorder",
  "classicube-helpers",
