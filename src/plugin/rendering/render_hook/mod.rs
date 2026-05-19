@@ -46,7 +46,13 @@ fn calc_ortho_matrix(width: f32, height: f32, z_near: f32, z_far: f32) -> Matrix
 unsafe extern "C" fn render(_: *mut c_void, _: f32) {
     unsafe {
         Gfx_SetDepthTest(1);
-        Gfx_SetDepthWrite(1);
+        // Depth-write OFF: bubbles are translucent quads. Leaving depth-write
+        // on would have each bubble's depth occlude later-drawn bubbles at the
+        // same depth, causing z-fighting when stacks momentarily overlap (e.g.
+        // during the spawn-ease-up tween). With depth-write off, later bubbles
+        // always overdraw earlier ones — matching the iteration order
+        // (oldest → newest), so the newest message stays visually on top.
+        Gfx_SetDepthWrite(0);
         Gfx_SetAlphaBlending(0);
         Gfx_LoadMatrix(MatrixType__MATRIX_PROJ, &raw const Gfx.Projection);
 
@@ -64,8 +70,7 @@ unsafe extern "C" fn render(_: *mut c_void, _: f32) {
         Gfx_SetAlphaBlending(1);
         Gfx_SetDepthWrite(0);
         Gfx_SetDepthTest(0);
-        // `bubble::render_inner` enables alpha-test for the bubble texture but
-        // doesn't reset it. ClassiCube's convention (matching `EntityNames_Render`)
+        // Defensive: ClassiCube's convention (matching `EntityNames_Render`)
         // is to leave alpha-test off; otherwise translucent HUD gradients (chat
         // backdrop, escape menu backdrop) get their <128-alpha pixels discarded.
         Gfx_SetAlphaTest(0);

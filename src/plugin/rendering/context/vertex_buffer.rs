@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use classicube_helpers::WithInner;
 use classicube_sys::{
     Gfx_BindTexture, Gfx_SetVertexFormat, Gfx_UpdateDynamicVb_IndexedTris, OwnedGfxVertexBuffer,
-    PACKEDCOL_WHITE, PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED, VertexTextured,
+    PackedCol, Texture, VertexFormat__VERTEX_FORMAT_TEXTURED, VertexTextured,
 };
 use tracing::warn;
 
@@ -30,10 +30,10 @@ unsafe fn Gfx_Draw2DTexture(tex: &mut Texture, col: PackedCol, front: bool) {
 }
 
 #[allow(clippy::missing_safety_doc)]
-pub unsafe fn Texture_Render(tex: &mut Texture, front: bool) {
+pub unsafe fn Texture_Render(tex: &mut Texture, col: PackedCol, front: bool) {
     unsafe {
         Gfx_BindTexture(tex.ID);
-        Gfx_Draw2DTexture(tex, PACKEDCOL_WHITE, front);
+        Gfx_Draw2DTexture(tex, col, front);
     }
 }
 
