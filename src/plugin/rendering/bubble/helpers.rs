@@ -39,9 +39,9 @@ pub fn free() {
 pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
     debug!("");
 
-    let (mut context_2d, width, height) = with_font(|font| {
+    let (mut front_context, mut back_context, width, height) = with_font(|font| {
         let string = OwnedString::new(text);
-        let (context_2d, width, height) = unsafe {
+        let (front_context, back_context, width, height) = unsafe {
             let mut text_args = DrawTextArgs {
                 text: string.get_cc_string(),
                 font,
@@ -61,58 +61,43 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
 
             debug!(?text_width, ?text_height, ?width, ?height);
 
-            let mut context_2d = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
+            let mut front_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
+            let mut back_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
 
             if text_width != 0 && text_height != 0 {
                 Context2D_DrawText(
-                    context_2d.as_context_2d_mut(),
+                    front_context.as_context_2d_mut(),
                     &mut text_args,
                     width / 2 - text_width / 2,
                     height / 2 - text_height / 2,
                 );
             }
 
-            draw_parts(context_2d.as_context_2d_mut(), width, height);
+            draw_parts(front_context.as_context_2d_mut(), width, height);
+            draw_parts(back_context.as_context_2d_mut(), width, height);
 
-            (context_2d, width, height)
+            (front_context, back_context, width, height)
         };
 
         drop(string);
 
-        (context_2d, width, height)
+        (front_context, back_context, width, height)
     });
 
-    let u2 = width as f32 / context_2d.as_bitmap().width as f32;
-    let v2 = height as f32 / context_2d.as_bitmap().height as f32;
+    let u2 = width as f32 / front_context.as_bitmap().width as f32;
+    let v2 = height as f32 / front_context.as_bitmap().height as f32;
 
-    let front_texture = OwnedTexture::new(
-        context_2d.as_bitmap_mut(),
-        (-(width as cc_int16 / 2), -(height as cc_int16)),
-        (width as _, height as _),
-        TextureRec {
-            u1: 0.0,
-            v1: 0.0,
-            u2,
-            v2,
-        },
-    );
+    let position = (-(width as cc_int16 / 2), -(height as cc_int16));
+    let size = (width as _, height as _);
+    let rec = TextureRec {
+        u1: 0.0,
+        v1: 0.0,
+        u2,
+        v2,
+    };
 
-    let mut context_2d = OwnedContext2D::new(1, 1, BACK_COLOR);
-    let back_texture = OwnedTexture::new(
-        context_2d.as_bitmap_mut(),
-        (-(width as cc_int16 / 2), -(height as cc_int16)),
-        (width as _, height as _),
-        TextureRec {
-            u1: 0.0,
-            v1: 0.0,
-            u2,
-            v2,
-        },
-    );
-
-    // let tex = texture.as_texture_mut();
-    // tex.Width = width as _;
-    // tex.Height = height as _;
+    let front_texture = OwnedTexture::new(front_context.as_bitmap_mut(), position, size, rec);
+    let back_texture = OwnedTexture::new(back_context.as_bitmap_mut(), position, size, rec);
 
     (front_texture, back_texture)
 }

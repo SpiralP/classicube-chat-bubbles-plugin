@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use classicube_sys::{PackedCol, PackedCol_A, PackedCol_Make};
+use classicube_sys::{PackedCol, PackedCol_Make};
 
 const IMAGE_DIR: &str = "bubble_image_parts";
 
@@ -13,7 +13,6 @@ fn main() {
     let mut code_parts = Vec::new();
 
     let mut got_front_color = false;
-    let mut got_back_color = false;
     for dir in read_dir(IMAGE_DIR).unwrap() {
         let dir = dir.unwrap();
         let metadata = dir.metadata().unwrap();
@@ -29,18 +28,6 @@ fn main() {
                     pixels[0]
                 ));
                 got_front_color = true;
-            } else if name == "LEFT" {
-                // chose first non-transparent pixel
-                for pixel in &pixels {
-                    if PackedCol_A(*pixel) != 0 {
-                        code_parts.push(format!(
-                            "pub const BACK_COLOR: ::classicube_sys::PackedCol = {};",
-                            pixel
-                        ));
-                        got_back_color = true;
-                        break;
-                    }
-                }
             }
 
             code_parts.push(format!("pub const {}_WIDTH: u32 = {};", name, width));
@@ -55,7 +42,6 @@ fn main() {
     }
 
     assert!(got_front_color, "!got_front_color");
-    assert!(got_back_color, "!got_back_color");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let path = Path::new(&out_dir).join(format!("{}.rs", IMAGE_DIR));
