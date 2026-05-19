@@ -9,9 +9,9 @@ use std::{
 
 use classicube_helpers::{entities::ENTITY_SELF_ID, events::input};
 use classicube_sys::{
-    Gui_GetInputGrab, Gui_GetScreen, GuiPriority_GUI_PRIORITY_CHAT, InputBind__BIND_CHAT,
+    Drawer2D, Gui_GetInputGrab, Gui_GetScreen, GuiPriority_GUI_PRIORITY_CHAT, InputBind__BIND_CHAT,
     InputBind__BIND_SEND_CHAT, InputButtons, InputButtons_CCKEY_ESCAPE,
-    InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, Screen,
+    InputButtons_CCKEY_KP_ENTER, InputButtons_CCKEY_SLASH, PackedCol_A, Screen,
 };
 use tracing::{debug, warn};
 
@@ -138,7 +138,9 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
         return;
     }
     if let Some(chat_screen) = chat_screen {
-        let text = chat_screen.input.base.text.to_string();
+        let raw = chat_screen.input.base.text.to_string();
+        let convert_percents = chat_screen.input.base.convertPercents != 0;
+        let text = format_input_line(&raw, convert_percents, is_valid_color_code);
         let changed = LAST_INPUT.with_borrow_mut(|option| {
             if option.as_ref().map(|last| last != &text).unwrap_or(true) {
                 // changed
@@ -157,6 +159,42 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
             }
         }
     }
+}
+
+/// Mirrors `Drawer2D_ValidColorCodeAt`: `Drawer2D.Colors` is sized
+/// `DRAWER2D_MAX_COLORS` (256), indexed by raw byte; valid iff alpha != 0.
+fn is_valid_color_code(c: u8) -> bool {
+    let color = unsafe { Drawer2D.Colors[c as usize] };
+    PackedCol_A(color) != 0
+}
+
+/// Mirrors `InputWidget_FormatLine`: when `convert_percents` is set,
+/// substitute `%X` → `&X` for any X that's a valid color code. ClassiCube
+/// stores user-typed `%X` verbatim in `InputWidget::text` and only rewrites
+/// them at render time, so the bubble snapshot must do the same conversion.
+fn format_input_line(
+    text: &str,
+    convert_percents: bool,
+    is_valid_code: impl Fn(u8) -> bool,
+) -> String {
+    if !convert_percents {
+        return text.to_string();
+    }
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c == b'%' && i + 1 < bytes.len() && is_valid_code(bytes[i + 1]) {
+            out.push(b'&');
+        } else {
+            out.push(c);
+        }
+        i += 1;
+    }
+    // Only ASCII `%` (0x25) was swapped for ASCII `&` (0x26); neither byte
+    // can appear mid-UTF-8 codepoint, so the result is still valid UTF-8.
+    String::from_utf8(out).expect("ascii-only byte swap preserves utf-8")
 }
 
 fn is_sensitive_text(text: &str) -> bool {
@@ -184,4 +222,104 @@ pub fn free() {
     LAST_INPUT.with_borrow_mut(|option| {
         option.take();
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{format_input_line, is_sensitive_text};
+
+    /// Default ClassiCube palette covers '0'..='9', 'a'..='f', 'A'..='F'.
+    fn default_palette(c: u8) -> bool {
+        c.is_ascii_hexdigit()
+    }
+
+    #[test]
+    fn percent_to_amp_for_valid_code() {
+        assert_eq!(
+            format_input_line("%chello world", true, default_palette),
+            "&chello world"
+        );
+    }
+
+    #[test]
+    fn percent_left_alone_for_invalid_code() {
+        // 'z' is not in the default palette.
+        assert_eq!(format_input_line("%zfoo", true, default_palette), "%zfoo");
+    }
+
+    #[test]
+    fn trailing_percent_at_end_of_string() {
+        // No byte follows '%', so it must be preserved.
+        assert_eq!(format_input_line("done%", true, default_palette), "done%");
+    }
+
+    #[test]
+    fn multiple_codes_in_one_string() {
+        assert_eq!(
+            format_input_line("%ared %bgreen %cblue", true, default_palette),
+            "&ared &bgreen &cblue"
+        );
+    }
+
+    #[test]
+    fn convert_percents_off_is_identity() {
+        // Classic mode: widget sets convertPercents = false, raw stays raw.
+        assert_eq!(
+            format_input_line("%chello", false, default_palette),
+            "%chello"
+        );
+    }
+
+    #[test]
+    fn empty_string_is_empty() {
+        assert_eq!(format_input_line("", true, default_palette), "");
+        assert_eq!(format_input_line("", false, default_palette), "");
+    }
+
+    #[test]
+    fn ampersand_passthrough() {
+        // Already-formatted text from the post-send path must not be rewritten.
+        assert_eq!(
+            format_input_line("&chello", true, default_palette),
+            "&chello"
+        );
+    }
+
+    #[test]
+    fn non_ascii_passes_through() {
+        // UTF-8 multibyte chars should round-trip; '%' cannot appear inside
+        // a codepoint (it's ASCII 0x25, never a continuation byte).
+        assert_eq!(
+            format_input_line("héllo %cwörld", true, default_palette),
+            "héllo &cwörld"
+        );
+    }
+
+    #[test]
+    fn adjacent_percent_signs() {
+        // First '%' is followed by '%' (not a valid code), so it stays;
+        // second '%' is followed by 'c' (valid), so it converts.
+        assert_eq!(
+            format_input_line("%%chello", true, default_palette),
+            "%&chello"
+        );
+    }
+
+    #[test]
+    fn empty_palette_never_converts() {
+        // Mirrors ClassiCube startup before palette init (or all colors zero).
+        assert_eq!(format_input_line("%chello", true, |_| false), "%chello");
+    }
+
+    #[test]
+    fn is_sensitive_text_filters_whispers_and_commands() {
+        assert!(is_sensitive_text("@SpiralP hi"));
+        assert!(is_sensitive_text("/help"));
+        assert!(is_sensitive_text("##secret"));
+        assert!(is_sensitive_text("++admin"));
+        assert!(!is_sensitive_text("hello"));
+        assert!(!is_sensitive_text(""));
+        assert!(!is_sensitive_text("#single"));
+        assert!(!is_sensitive_text("+single"));
+    }
 }
