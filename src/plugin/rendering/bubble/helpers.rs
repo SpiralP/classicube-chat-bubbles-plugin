@@ -1,4 +1,4 @@
-use std::{cell::RefCell, mem, os::raw::c_int};
+use std::{cell::RefCell, mem, os::raw::c_int, slice};
 
 use anyhow::{Error, Result};
 use classicube_helpers::entities::Entity;
@@ -10,6 +10,8 @@ use classicube_sys::{
 use tracing::{debug, warn};
 
 use crate::{bubble_image_parts::*, plugin::rendering::bubble::inner::BUBBLE_HEIGHT};
+
+const BACK_FILL: PackedCol = 0;
 
 thread_local!(
     static FONT: RefCell<Option<FontDesc>> = const { RefCell::new(None) };
@@ -62,7 +64,7 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
             debug!(?text_width, ?text_height, ?width, ?height);
 
             let mut front_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
-            let mut back_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
+            let mut back_context = OwnedContext2D::new_pow_of_2(width, height, BACK_FILL);
 
             if text_width != 0 && text_height != 0 {
                 Context2D_DrawText(
@@ -75,6 +77,18 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
 
             draw_parts(front_context.as_context_2d_mut(), width, height);
             draw_parts(back_context.as_context_2d_mut(), width, height);
+
+            // Border PNGs include FRONT_COLOR pixels next to the antialias edge
+            // that blend invisibly into the front canvas's fill. On the
+            // transparent back canvas they'd render as an opaque stripe, so
+            // strip them out, leaving just the antialias outline.
+            let back_bitmap = back_context.as_bitmap_mut();
+            let total = (back_bitmap.width * back_bitmap.height) as usize;
+            for px in slice::from_raw_parts_mut(back_bitmap.scan0, total) {
+                if *px == FRONT_COLOR {
+                    *px = BACK_FILL;
+                }
+            }
 
             (front_context, back_context, width, height)
         };
