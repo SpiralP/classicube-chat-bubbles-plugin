@@ -77,6 +77,7 @@ pub fn free() {
         }
     });
 
+    bubble::free();
     render_hook::free();
     context::free();
 }

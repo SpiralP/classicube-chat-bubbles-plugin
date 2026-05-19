@@ -1,6 +1,10 @@
 mod helpers;
 mod inner;
 
+pub fn free() {
+    helpers::free();
+}
+
 use std::{
     collections::VecDeque,
     rc::Weak,

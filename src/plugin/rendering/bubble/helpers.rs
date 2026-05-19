@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use classicube_helpers::entities::Entity;
 use classicube_sys::{
     Bitmap, Context2D, Context2D_DrawPixels, Context2D_DrawText, DrawTextArgs, Drawer2D_TextHeight,
-    Drawer2D_TextWidth, FONT_FLAGS_FONT_FLAGS_NONE, Font_Make, FontDesc, OwnedContext2D,
+    Drawer2D_TextWidth, FONT_FLAGS_FONT_FLAGS_NONE, Font_Free, Font_Make, FontDesc, OwnedContext2D,
     OwnedString, OwnedTexture, PackedCol, TextureRec, Vec3, cc_int16,
 };
 use tracing::{debug, warn};
@@ -12,19 +12,34 @@ use tracing::{debug, warn};
 use crate::{bubble_image_parts::*, plugin::rendering::bubble::inner::BUBBLE_HEIGHT};
 
 thread_local!(
-    static FONT: RefCell<FontDesc> = RefCell::new(unsafe {
-        let mut font = mem::zeroed();
-        Font_Make(&mut font, 8, FONT_FLAGS_FONT_FLAGS_NONE as _);
-        font
-    });
+    static FONT: RefCell<Option<FontDesc>> = const { RefCell::new(None) };
 );
+
+fn with_font<R>(f: impl FnOnce(&mut FontDesc) -> R) -> R {
+    FONT.with_borrow_mut(|slot| {
+        let font = slot.get_or_insert_with(|| unsafe {
+            let mut font = mem::zeroed();
+            Font_Make(&mut font, 8, FONT_FLAGS_FONT_FLAGS_NONE as _);
+            font
+        });
+        f(font)
+    })
+}
+
+pub fn free() {
+    FONT.with_borrow_mut(|slot| {
+        if let Some(mut font) = slot.take() {
+            unsafe { Font_Free(&mut font) };
+        }
+    });
+}
 
 /// returns (front, back)
 #[tracing::instrument]
 pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
     debug!("");
 
-    let (mut context_2d, width, height) = FONT.with_borrow_mut(|font| {
+    let (mut context_2d, width, height) = with_font(|font| {
         let string = OwnedString::new(text);
         let (context_2d, width, height) = unsafe {
             let mut text_args = DrawTextArgs {
