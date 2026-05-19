@@ -22,20 +22,19 @@ impl InnerBubble {
         }
     }
 
+    /// `position` is the eye world position; `y_offset` is applied in the
+    /// bubble's local frame (after the rotate_z flip), so head pitch rotates
+    /// it along with the head. Callers should fold the eye-to-nameplate
+    /// distance (from `get_transform`'s third return value) into `y_offset`
+    /// so the bubble's resting position sits on top of the head.
     pub fn update_transform(&mut self, position: Vec3, rotation: Vec3, y_offset: f32) {
         let height = self.textures.0.as_texture().height;
 
         let ratio = BUBBLE_HEIGHT / height as f32;
         let scale = Vec3::create(ratio, ratio, 1.0);
 
-        let translation = Matrix::translate(position.x, position.y + 0.5, position.z);
+        let translation = Matrix::translate(position.x, position.y, position.z);
         let scale = Matrix::scale(scale.x, scale.y, scale.z);
-        // y_offset is applied in the bubble's local frame (after the rotate_z
-        // flip that puts text upright) so the spawn/fly/stack animations
-        // travel along the bubble's local-up direction, which is determined
-        // by the snapshotted rotation. Looking straight up at send time means
-        // the bubble flies horizontally; looking forward means it flies along
-        // world-up.
         let local_up_translation = Matrix::translate(0.0, y_offset, 0.0);
 
         self.transform = scale
@@ -46,14 +45,16 @@ impl InnerBubble {
             * translation;
     }
 
-    pub fn update_transform_entity(&mut self, entity: &Entity, y_offset: f32) {
-        let (position, rotation) = match get_transform(entity) {
+    /// `animation_y` is the spawn/fly/stack offset; this helper adds the
+    /// head-top offset on top so the resting bubble sits on the head.
+    pub fn update_transform_entity(&mut self, entity: &Entity, animation_y: f32) {
+        let (position, rotation, head_top_offset) = match get_transform(entity) {
             Ok(ok) => ok,
             Err(e) => {
                 warn!("get_transform: {:?}", e);
                 return;
             }
         };
-        self.update_transform(position, rotation, y_offset);
+        self.update_transform(position, rotation, animation_y + head_top_offset);
     }
 }

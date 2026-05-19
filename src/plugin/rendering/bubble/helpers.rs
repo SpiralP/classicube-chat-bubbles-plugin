@@ -9,7 +9,7 @@ use classicube_sys::{
 };
 use tracing::{debug, warn};
 
-use crate::{bubble_image_parts::*, plugin::rendering::bubble::inner::BUBBLE_HEIGHT};
+use crate::bubble_image_parts::*;
 
 const BACK_FILL: PackedCol = 0;
 
@@ -116,15 +116,25 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
     (front_texture, back_texture)
 }
 
-pub fn get_transform(entity: &Entity) -> Result<(Vec3, Vec3)> {
-    let bubble_y = entity.get_model_name_y() * entity.get_model_scale().y - BUBBLE_HEIGHT;
+/// Returns `(eye_world_position, rotation, eye_to_nameplate_offset)`.
+///
+/// The anchor is the entity's eye (head's pivot of rotation), so head pitch
+/// doesn't move the anchor. The third value is the distance from eye to
+/// nameplate in model-space scaled units — feed it into the rotation chain's
+/// local-up translation so head pitch rotates the bubble along with the head,
+/// instead of leaving it parked directly above the body.
+pub fn get_transform(entity: &Entity) -> Result<(Vec3, Vec3, f32)> {
+    let scale_y = entity.get_model_scale().y;
+    let eye_y = entity.get_model_eye_y() * scale_y;
+    let head_top_offset = entity.get_model_name_y() * scale_y - eye_y;
+
     let mut position = entity.get_position();
-    position.y += bubble_y;
+    position.y += eye_y;
 
     let rot = entity.get_rot();
     let rotation = Vec3::create(rot[0] + entity.get_head()[0], rot[1], rot[2]);
 
-    Ok::<_, Error>((position, rotation))
+    Ok::<_, Error>((position, rotation, head_top_offset))
 }
 
 unsafe fn draw_parts(context: &mut Context2D, width: c_int, height: c_int) {

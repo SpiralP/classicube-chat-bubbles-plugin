@@ -40,11 +40,14 @@ struct Message {
     spawn_instant: Instant,
     die_instant: Instant,
     inner: InnerBubble,
-    /// World-space position snapshotted at message-creation time. Sent bubbles
+    /// Eye world position snapshotted at message-creation time. Sent bubbles
     /// stay anchored where the player was when they spoke (unlike the typing
     /// bubble, which follows the player live).
     position: Vec3,
     rotation: Vec3,
+    /// Distance from eye to nameplate at send time. Added to `y_offset` so the
+    /// resting bubble sits on top of the head (rotated with the head pitch).
+    head_top_offset: f32,
     /// Eased toward `(messages.len() - 1 - i) * STACK_GAP` each frame.
     stack_y: f32,
 }
@@ -130,7 +133,7 @@ impl Renderable for Bubble {
                 (0.0, 1.0)
             };
 
-            let y_offset = spawn_y + fly_y + message.stack_y;
+            let y_offset = spawn_y + fly_y + message.stack_y + message.head_top_offset;
             message
                 .inner
                 .update_transform(message.position, message.rotation, y_offset);
@@ -177,7 +180,7 @@ impl PlayerChatEventListener for Bubble {
                         return;
                     }
                 };
-                let (position, rotation) = match helpers::get_transform(&entity) {
+                let (position, rotation, head_top_offset) = match helpers::get_transform(&entity) {
                     Ok(t) => t,
                     Err(e) => {
                         warn!("get_transform: {:?}", e);
@@ -191,6 +194,7 @@ impl PlayerChatEventListener for Bubble {
                     inner: InnerBubble::new(text),
                     position,
                     rotation,
+                    head_top_offset,
                     stack_y: 0.0,
                 });
             }
