@@ -2,14 +2,8 @@ name: build
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master, alpha, beta]
   workflow_call:
-    inputs:
-      release:
-        default: false
-        description: Build in release mode.
-        required: false
-        type: boolean
   workflow_dispatch:
 
 concurrency:
@@ -18,108 +12,44 @@ concurrency:
 
 permissions:
   contents: read # for checkout
+  id-token: write # OIDC token for Sigstore signing
+  attestations: write # persist build-provenance attestations
 
 jobs:
   linux_nix:
     uses: SpiralP/github-reusable-workflows/.github/workflows/build.yml@7e0f2e3759bc2b0576a8921dfa33fb449d5e8a1b # main
-    with:
-      flake-attribute: ${{ inputs.release && 'default' || 'debug' }}
-      upload-build-result: true
 
-  windows_x86:
+  windows:
     name: Build Windows ${{ matrix.config.arch }}
     runs-on: windows-2025
     strategy:
       fail-fast: false
       matrix:
         config:
-          - arch: x86_64
-            target: x86_64-pc-windows-msvc
-          # - arch: i686
-          #   target: i686-pc-windows-msvc
-
+          - { arch: x86_64, target: x86_64-pc-windows-msvc }
+          # - { arch: i686, target: i686-pc-windows-msvc }
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Add rust target
-        run: rustup target add ${{ matrix.config.target }}
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: SpiralP/github-reusable-workflows/.github/actions/build-classicube-plugin@7e0f2e3759bc2b0576a8921dfa33fb449d5e8a1b # main
         with:
-          key: ${{ matrix.config.target }}
+          arch: ${{ matrix.config.arch }}
+          target: ${{ matrix.config.target }}
 
-      - name: Build
-        run: |
-          cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
-
-      - uses: taiki-e/install-action@fa0dd4cd0a40696e6f9766370614a5ce482e6aa8 # v2.77.5
-        with:
-          tool: cargo-nextest
-
-      - name: Test
-        run: |
-          cargo nextest run --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }} --no-capture
-          Move-Item `
-            -Path 'target\${{ matrix.config.target }}\${{ inputs.release && 'release' || 'debug' }}\classicube_chat_bubbles_plugin.dll' `
-            -Destination '.\classicube_chat_bubbles_windows_${{ matrix.config.arch }}.dll'
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: classicube_chat_bubbles_windows_${{ matrix.config.arch }}
-          path: classicube_chat_bubbles_windows_${{ matrix.config.arch }}.dll
-
-  linux_x86:
+  linux:
     name: Build Linux ${{ matrix.config.arch }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         config:
-          - arch: x86_64
-            target: x86_64-unknown-linux-gnu
-          # - arch: i686
-          #   target: i686-unknown-linux-gnu
-
+          - { arch: x86_64, target: x86_64-unknown-linux-gnu }
+          # - { arch: i686, target: i686-unknown-linux-gnu }
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install i686 deps
-        if: ${{ matrix.config.arch == 'i686' }}
-        run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get -y update
-          sudo apt-get -y install pkg-config:i386 \
-            gcc-multilib g++-multilib \
-            libssl-dev:i386 \
-            libssl3:i386
-          echo "PKG_CONFIG_ALLOW_CROSS=1" >> "$GITHUB_ENV"
-
-      - name: Add rust target
-        run: rustup target add ${{ matrix.config.target }}
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: SpiralP/github-reusable-workflows/.github/actions/build-classicube-plugin@7e0f2e3759bc2b0576a8921dfa33fb449d5e8a1b # main
         with:
-          key: ${{ matrix.config.target }}
-
-      - name: Build
-        run: |
-          cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
-          file 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.so'
-
-      - uses: taiki-e/install-action@fa0dd4cd0a40696e6f9766370614a5ce482e6aa8 # v2.77.5
-        with:
-          tool: cargo-nextest
-
-      - name: Test
-        run: |
-          cargo nextest run --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }} --no-capture
-          mv 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.so' \
-            './classicube_chat_bubbles_linux_${{ matrix.config.arch }}.so'
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: classicube_chat_bubbles_linux_${{ matrix.config.arch }}
-          path: classicube_chat_bubbles_linux_${{ matrix.config.arch }}.so
+          arch: ${{ matrix.config.arch }}
+          target: ${{ matrix.config.target }}
 
   mac:
     name: Build MacOS ${{ matrix.config.arch }}
@@ -128,37 +58,11 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - arch: aarch64
-            target: aarch64-apple-darwin
-          # - arch: x86_64
-          #   target: x86_64-apple-darwin
-
+          - { arch: aarch64, target: aarch64-apple-darwin }
+          # - { arch: x86_64, target: x86_64-apple-darwin }
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Add rust target
-        run: rustup target add ${{ matrix.config.target }}
-
-      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+      - uses: SpiralP/github-reusable-workflows/.github/actions/build-classicube-plugin@7e0f2e3759bc2b0576a8921dfa33fb449d5e8a1b # main
         with:
-          key: ${{ matrix.config.target }}
-
-      - name: Build
-        run: |
-          cargo build --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }}
-          file 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.dylib'
-
-      - uses: taiki-e/install-action@fa0dd4cd0a40696e6f9766370614a5ce482e6aa8 # v2.77.5
-        with:
-          tool: cargo-nextest
-
-      - name: Test
-        run: |
-          cargo nextest run --target ${{ matrix.config.target }} ${{ inputs.release && '--release' || '' }} --no-capture
-          mv 'target/${{ matrix.config.target }}/${{ inputs.release && 'release' || 'debug' }}/libclassicube_chat_bubbles_plugin.dylib' \
-            'classicube_chat_bubbles_macos_${{ matrix.config.arch }}.dylib'
-
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: classicube_chat_bubbles_macos_${{ matrix.config.arch }}
-          path: classicube_chat_bubbles_macos_${{ matrix.config.arch }}.dylib
+          arch: ${{ matrix.config.arch }}
+          target: ${{ matrix.config.target }}
