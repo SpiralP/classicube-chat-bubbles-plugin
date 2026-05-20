@@ -1,4 +1,7 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+};
 
 use classicube_helpers::{
     entities::ENTITY_SELF_ID,
@@ -41,6 +44,19 @@ thread_local!(
     static OBSERVED_CHAT_PREFIX: RefCell<HashMap<u8, String>> = RefCell::new(HashMap::new());
 );
 
+// Local mirror of the server's `p.whisper` flag, kept in sync by watching the
+// system-feedback lines MCGalaxy emits when `/whisper` toggles auto-whisper
+// mode. While set, the typing-preview broadcast in `chat_input` is muted so
+// keystrokes destined for a private whisper don't leak to everyone on the map
+// as a bubble above the speaker.
+thread_local!(
+    static WHISPER_MODE: Cell<bool> = const { Cell::new(false) };
+);
+
+pub fn is_in_whisper_mode() -> bool {
+    WHISPER_MODE.with(Cell::get)
+}
+
 pub fn initialize() {
     TAB_LIST.with_borrow_mut(|option| {
         *option = Some(TabList::new());
@@ -55,6 +71,10 @@ pub fn initialize() {
                   }| {
                 if message_type != &MsgType_MSG_TYPE_NORMAL {
                     return;
+                }
+
+                if let Some(new_state) = detect_whisper_mode_transition(message) {
+                    WHISPER_MODE.set(new_state);
                 }
 
                 if let Some(continuation) = is_continuation_message(message) {
@@ -103,6 +123,7 @@ pub fn free() {
         *cell = None;
     });
     OBSERVED_CHAT_PREFIX.with_borrow_mut(|map| map.clear());
+    WHISPER_MODE.set(false);
 }
 
 /// `> rest of message` → `Some("rest of message")`. Anything else → `None`.
@@ -139,6 +160,30 @@ fn detect_whisper_prefix(message: &str) -> Option<(WhisperKind, &str)> {
         _ => return None,
     };
     Some((kind, &message[i + 4..]))
+}
+
+/// Server-emitted toggle messages for auto-whisper mode (MCGalaxy
+/// `CmdWhisper.cs`). `Some(true)` enters whisper mode, `Some(false)` exits.
+/// Leading `&X` color codes are skipped so the suppression isn't keyed to a
+/// specific palette. The "No online players match" lookup-failure line is
+/// deliberately not matched — when the whisper target logs off mid-mode, the
+/// server keeps `p.whisper = true`, so the local mirror must stay set too.
+fn detect_whisper_mode_transition(message: &str) -> Option<bool> {
+    let bytes = message.as_bytes();
+    let mut i = 0;
+    while i + 1 < bytes.len() && bytes[i] == b'&' {
+        i += 2;
+    }
+    let rest = message.get(i..)?;
+    if rest.starts_with("Auto-whisper enabled. All messages will now be sent to ")
+        || rest == "All messages sent will now auto-whisper"
+    {
+        Some(true)
+    } else if rest == "Whisper chat turned off" {
+        Some(false)
+    } else {
+        None
+    }
 }
 
 /// Returns `(player_id, said_text, observed_prefix)` for a non-continuation
@@ -233,7 +278,9 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, Option<&str>, &str)> 
 
 #[cfg(test)]
 mod tests {
-    use super::{WhisperKind, detect_whisper_prefix, is_continuation_message};
+    use super::{
+        WhisperKind, detect_whisper_mode_transition, detect_whisper_prefix, is_continuation_message,
+    };
 
     #[test]
     fn keeps_leading_color_intact() {
@@ -295,5 +342,62 @@ mod tests {
         assert_eq!(detect_whisper_prefix("&9[<3] heart"), None);
         assert_eq!(detect_whisper_prefix("> &fcontinuation"), None);
         assert_eq!(detect_whisper_prefix(""), None);
+    }
+
+    #[test]
+    fn detects_auto_whisper_enabled_with_target() {
+        assert_eq!(
+            detect_whisper_mode_transition(
+                "&7Auto-whisper enabled. All messages will now be sent to &cFloaty."
+            ),
+            Some(true)
+        );
+        // Same sentence with no leading color code.
+        assert_eq!(
+            detect_whisper_mode_transition(
+                "Auto-whisper enabled. All messages will now be sent to Floaty."
+            ),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn detects_auto_whisper_toggle_on_without_target() {
+        assert_eq!(
+            detect_whisper_mode_transition("&7All messages sent will now auto-whisper"),
+            Some(true)
+        );
+        assert_eq!(
+            detect_whisper_mode_transition("All messages sent will now auto-whisper"),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn detects_whisper_chat_turned_off() {
+        assert_eq!(
+            detect_whisper_mode_transition("&7Whisper chat turned off"),
+            Some(false)
+        );
+        assert_eq!(
+            detect_whisper_mode_transition("Whisper chat turned off"),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn ignores_no_online_players_match() {
+        // Target left mid-mode: server keeps p.whisper = true, so we must too.
+        assert_eq!(
+            detect_whisper_mode_transition("&7No online players match \"Floaty\"."),
+            None
+        );
+    }
+
+    #[test]
+    fn ignores_unrelated_lines() {
+        assert_eq!(detect_whisper_mode_transition("&7Player: &fhi"), None);
+        assert_eq!(detect_whisper_mode_transition("> &fcontinuation"), None);
+        assert_eq!(detect_whisper_mode_transition(""), None);
     }
 }

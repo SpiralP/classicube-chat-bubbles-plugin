@@ -17,7 +17,7 @@ use classicube_sys::{
 use tracing::{debug, warn};
 
 use self::{chat_screen::ChatScreen, options::get_input_button};
-use crate::plugin::events::player_chat_event::PlayerChatEvent;
+use crate::plugin::events::{chat_message::is_in_whisper_mode, player_chat_event::PlayerChatEvent};
 
 thread_local!(
     static INPUT_DOWN_HANDLER: RefCell<Option<input::Down2EventHandler>> = Default::default();
@@ -155,7 +155,7 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
         if changed {
             debug!(?text, "changed");
 
-            if !is_sensitive_text(&text) {
+            if !is_sensitive_text(&text) && !is_in_whisper_mode() {
                 PlayerChatEvent::InputTextChanged(text).emit(ENTITY_SELF_ID);
             }
         }
