@@ -68,8 +68,9 @@ pub fn handle_local_emit(event: PlayerChatEvent) {
             }
         }
 
-        PlayerChatEvent::Message(_) => {
-            // we only care about chat received events
+        PlayerChatEvent::Message(_) | PlayerChatEvent::MessageContinuation(_) => {
+            // chat-received-derived events are never relayed; the receiving
+            // side regenerates them from its own ChatReceivedEvent stream.
         }
     });
 }

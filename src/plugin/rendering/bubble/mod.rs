@@ -24,8 +24,10 @@ use self::{
     inner::InnerBubble,
 };
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
-use crate::plugin::events::player_chat_event::{
-    PlayerChatEvent, listener::PlayerChatEventListener,
+use crate::plugin::events::{
+    chat_input::wordwrap::{wrap_for_display, wrap_typing_for_display},
+    chat_message::get_nick_name,
+    player_chat_event::{PlayerChatEvent, listener::PlayerChatEventListener},
 };
 
 const MESSAGE_LIFETIME: Duration = Duration::from_secs(5);
@@ -33,7 +35,11 @@ const SPAWN_DURATION: Duration = Duration::from_millis(200);
 const FLY_AWAY_DURATION: Duration = Duration::from_millis(400);
 const SPAWN_RISE: f32 = 0.15;
 const FLY_AWAY_RISE: f32 = 0.30;
-const STACK_GAP: f32 = 0.30;
+/// How much an older bubble's bottom (tail) overlaps the newer bubble's top
+/// edge, in world units. Constant across single- and multi-line bubbles so
+/// the visual gap stays consistent. Tuned to the original single-line look
+/// (`BUBBLE_HEIGHT 0.5 - STACK_OVERLAP 0.20 = 0.30` advance).
+const STACK_OVERLAP: f32 = 0.20;
 const STACK_TWEEN_TAU: f32 = 0.08;
 
 struct Message {
@@ -48,7 +54,7 @@ struct Message {
     /// Distance from eye to nameplate at send time. Added to `y_offset` so the
     /// resting bubble sits on top of the head (rotated with the head pitch).
     head_top_offset: f32,
-    /// Eased toward `(messages.len() - 1 - i) * STACK_GAP` each frame.
+    /// Eased toward the cumulative stack target each frame.
     stack_y: f32,
 }
 
@@ -108,19 +114,24 @@ impl Renderable for Bubble {
         self.messages
             .retain(|m| now < m.die_instant + FLY_AWAY_DURATION);
 
-        let len = self.messages.len();
         let stack_factor = decay_factor(dt, STACK_TWEEN_TAU);
-        // Typing bubble (when present) occupies slot 0 closest to the head;
-        // sent messages stack starting one slot above it.
-        let typing_offset = if self.typing.is_some() { 1 } else { 0 };
 
-        // Sent messages render first; they're anchored to their snapshotted
-        // positions and don't follow the player.
-        for (i, message) in self.messages.iter_mut().enumerate() {
-            // Newest at the bottom of the message stack, older ones above.
-            let target_stack_y = (len - 1 - i + typing_offset) as f32 * STACK_GAP;
-            message.stack_y += (target_stack_y - message.stack_y) * stack_factor;
+        // Ease each bubble's stack_y toward its cumulative target, newest
+        // first. Doing this in a separate pass avoids allocating a per-frame
+        // targets vec while keeping the render pass below in oldest→newest
+        // order (so newer bubbles composite on top; depth-write is off).
+        let typing_advance = self
+            .typing
+            .as_ref()
+            .map(|t| t.height_world() - STACK_OVERLAP)
+            .unwrap_or(0.0);
+        let mut y_acc = typing_advance;
+        for message in self.messages.iter_mut().rev() {
+            message.stack_y += (y_acc - message.stack_y) * stack_factor;
+            y_acc += message.inner.height_world() - STACK_OVERLAP;
+        }
 
+        for message in self.messages.iter_mut() {
             let age = (now - message.spawn_instant).as_secs_f32();
             let spawn_t = clamp01(age / SPAWN_DURATION.as_secs_f32());
             let spawn_y = -SPAWN_RISE * (1.0 - ease_out_cubic(spawn_t));
@@ -168,7 +179,29 @@ impl PlayerChatEventListener for Bubble {
                 if text.is_empty() {
                     self.typing = None;
                 } else {
-                    self.typing = Some(InnerBubble::new(text));
+                    // Pre-wrap so the typing preview matches what the server
+                    // will send when the player hits enter. Strip the `> `
+                    // each continuation line gets — server-received
+                    // continuations are already `> `-stripped before reaching
+                    // the renderer, so this keeps both display paths consistent.
+                    //
+                    // Bubbles are per-entity and InputTextChanged is only
+                    // emitted on ENTITY_SELF_ID, so `self.entity` is the local
+                    // player. We feed its tab-list nick into the wrap so the
+                    // first line's 64-byte budget accounts for the `{nick}: `
+                    // the server prepends; singleplayer / pre-tab-list cases
+                    // fall back to bare-text wrap (no prefix to budget for).
+                    let lines = self
+                        .entity
+                        .upgrade()
+                        .and_then(|e| get_nick_name(e.get_id()))
+                        .map(|nick| wrap_typing_for_display(text, &nick))
+                        .unwrap_or_else(|| wrap_for_display(text));
+                    if lines.is_empty() {
+                        self.typing = None;
+                    } else {
+                        self.typing = Some(InnerBubble::new(&lines));
+                    }
                 }
             }
 
@@ -191,12 +224,29 @@ impl PlayerChatEventListener for Bubble {
                 self.messages.push_back(Message {
                     spawn_instant: now,
                     die_instant: now + MESSAGE_LIFETIME,
-                    inner: InnerBubble::new(text),
+                    inner: InnerBubble::new(std::slice::from_ref(text)),
                     position,
                     rotation,
                     head_top_offset,
                     stack_y: 0.0,
                 });
+            }
+
+            PlayerChatEvent::MessageContinuation(lines) => {
+                // Re-bake the most recent message with the accumulated
+                // server-split lines, keeping spawn/die timing + anchor so the
+                // bubble's lifetime doesn't reset. We use the server's break
+                // points verbatim (rather than re-wrapping the join) so the
+                // bubble shows what every other client sees. Best-effort: in
+                // the unlikely case another message arrived for this speaker
+                // between the original line and its `> ...` continuation, we
+                // still edit `.back()` — the race is rare and harmless
+                // visually.
+                let Some(last) = self.messages.back_mut() else {
+                    warn!("MessageContinuation with no prior message");
+                    return;
+                };
+                last.inner = InnerBubble::new(lines);
             }
         }
     }

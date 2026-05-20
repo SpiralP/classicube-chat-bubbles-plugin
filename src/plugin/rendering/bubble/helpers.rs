@@ -36,43 +36,72 @@ pub fn free() {
     });
 }
 
+/// Body height a single line of text occupies (before borders) when its
+/// rendered width is non-zero. Matches `text_height.max(12)` for single-line
+/// inputs and lets the world-height scale stay constant across line counts.
+pub const SINGLE_LINE_TEXT_HEIGHT: c_int = 12;
+
+/// Total canvas height for a single-line bubble, in pixels. Used to derive the
+/// fixed world-space scale ratio so multi-line bubbles don't squish vertically.
+pub const SINGLE_LINE_CANVAS_HEIGHT: c_int =
+    SINGLE_LINE_TEXT_HEIGHT + TOP_HEIGHT as c_int + BOTTOM_CENTER_HEIGHT as c_int + 2;
+
 /// returns (front, back)
 #[tracing::instrument]
-pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
+pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
     debug!("");
 
     let (mut front_context, mut back_context, width, height) = with_font(|font| {
-        let string = OwnedString::new(text);
-        let (front_context, back_context, width, height) = unsafe {
-            let mut text_args = DrawTextArgs {
-                text: string.get_cc_string(),
-                font,
-                useShadow: 0,
-            };
+        let strings: Vec<OwnedString> = lines.iter().map(|l| OwnedString::new(l.clone())).collect();
 
-            let text_width = Drawer2D_TextWidth(&mut text_args);
-            let text_height = if text_width == 0 {
-                0
-            } else {
-                Drawer2D_TextHeight(&mut text_args)
-            };
+        unsafe {
+            let metrics: Vec<(c_int, c_int)> = strings
+                .iter()
+                .map(|s| {
+                    let mut args = DrawTextArgs {
+                        text: s.get_cc_string(),
+                        font,
+                        useShadow: 0,
+                    };
+                    let w = Drawer2D_TextWidth(&mut args);
+                    let h = if w == 0 {
+                        0
+                    } else {
+                        Drawer2D_TextHeight(&mut args)
+                    };
+                    (w, h)
+                })
+                .collect();
 
-            let width = text_width + (LEFT_WIDTH as c_int) * 2 + 2;
-            let height =
-                text_height.max(12) + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
+            let max_w = metrics.iter().map(|(w, _)| *w).max().unwrap_or(0);
+            let total_h: c_int = metrics.iter().map(|(_, h)| *h).sum();
+            let body_height = total_h.max(SINGLE_LINE_TEXT_HEIGHT);
 
-            debug!(?text_width, ?text_height, ?width, ?height);
+            let width = max_w + (LEFT_WIDTH as c_int) * 2 + 2;
+            let height = body_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
+
+            debug!(?max_w, ?total_h, ?width, ?height);
 
             let mut front_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
             let mut back_context = OwnedContext2D::new_pow_of_2(width, height, BACK_FILL);
 
-            if text_width != 0 && text_height != 0 {
-                Context2D_DrawText(
-                    front_context.as_context_2d_mut(),
-                    &mut text_args,
-                    width / 2 - text_width / 2,
-                    height / 2 - text_height / 2,
-                );
+            // Center the text block vertically, then stack lines downward.
+            let mut y = height / 2 - total_h / 2;
+            for (s, (w, h)) in strings.iter().zip(metrics.iter()) {
+                if *w != 0 && *h != 0 {
+                    let mut args = DrawTextArgs {
+                        text: s.get_cc_string(),
+                        font,
+                        useShadow: 0,
+                    };
+                    Context2D_DrawText(
+                        front_context.as_context_2d_mut(),
+                        &mut args,
+                        width / 2 - *w / 2,
+                        y,
+                    );
+                }
+                y += *h;
             }
 
             draw_parts(front_context.as_context_2d_mut(), width, height);
@@ -91,11 +120,7 @@ pub fn create_textures(text: &str) -> (OwnedTexture, OwnedTexture) {
             }
 
             (front_context, back_context, width, height)
-        };
-
-        drop(string);
-
-        (front_context, back_context, width, height)
+        }
     });
 
     let u2 = width as f32 / front_context.as_bitmap().width as f32;

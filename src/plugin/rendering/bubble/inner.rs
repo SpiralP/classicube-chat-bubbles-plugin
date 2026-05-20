@@ -4,10 +4,15 @@ use classicube_helpers::entities::Entity;
 use classicube_sys::{MATH_DEG2RAD, Matrix, OwnedTexture, Vec3};
 use tracing::warn;
 
-use super::helpers::{create_textures, get_transform};
+use super::helpers::{SINGLE_LINE_CANVAS_HEIGHT, create_textures, get_transform};
 
 // pub const BUBBLE_WIDTH: u8 = 4;
 pub const BUBBLE_HEIGHT: f32 = 0.5;
+
+/// Fixed pixel-to-world scale. A single-line bubble fills `BUBBLE_HEIGHT`;
+/// multi-line bubbles grow taller proportionally. Without this, the original
+/// `BUBBLE_HEIGHT / texture_height` ratio shrank each line as more were added.
+const SCALE_RATIO: f32 = BUBBLE_HEIGHT / SINGLE_LINE_CANVAS_HEIGHT as f32;
 
 pub struct InnerBubble {
     /// (front, back)
@@ -15,11 +20,19 @@ pub struct InnerBubble {
     pub transform: Matrix,
 }
 impl InnerBubble {
-    pub fn new(text: &str) -> InnerBubble {
+    pub fn new(lines: &[String]) -> InnerBubble {
         InnerBubble {
-            textures: create_textures(text),
+            textures: create_textures(lines),
             transform: Matrix::IDENTITY,
         }
+    }
+
+    /// World-space height of the rendered bubble. The stacker uses this to
+    /// advance each older bubble by its own height (minus a small overlap),
+    /// keeping the visual gap between bubbles constant regardless of how
+    /// many text lines each one contains.
+    pub fn height_world(&self) -> f32 {
+        self.textures.0.as_texture().height as f32 * SCALE_RATIO
     }
 
     /// `position` is the eye world position; `y_offset` is applied in the
@@ -28,10 +41,7 @@ impl InnerBubble {
     /// distance (from `get_transform`'s third return value) into `y_offset`
     /// so the bubble's resting position sits on top of the head.
     pub fn update_transform(&mut self, position: Vec3, rotation: Vec3, y_offset: f32) {
-        let height = self.textures.0.as_texture().height;
-
-        let ratio = BUBBLE_HEIGHT / height as f32;
-        let scale = Vec3::create(ratio, ratio, 1.0);
+        let scale = Vec3::create(SCALE_RATIO, SCALE_RATIO, 1.0);
 
         let translation = Matrix::translate(position.x, position.y, position.z);
         let scale = Matrix::scale(scale.x, scale.y, scale.z);

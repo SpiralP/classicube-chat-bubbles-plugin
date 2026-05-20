@@ -1,5 +1,6 @@
 pub mod chat_screen;
 pub mod options;
+pub mod wordwrap;
 
 use std::{
     cell::{Cell, RefCell},
@@ -163,7 +164,7 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
 
 /// Mirrors `Drawer2D_ValidColorCodeAt`: `Drawer2D.Colors` is sized
 /// `DRAWER2D_MAX_COLORS` (256), indexed by raw byte; valid iff alpha != 0.
-fn is_valid_color_code(c: u8) -> bool {
+pub(super) fn is_valid_color_code(c: u8) -> bool {
     let color = unsafe { Drawer2D.Colors[c as usize] };
     PackedCol_A(color) != 0
 }

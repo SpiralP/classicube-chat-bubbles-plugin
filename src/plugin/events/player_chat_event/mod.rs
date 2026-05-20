@@ -12,6 +12,13 @@ pub enum PlayerChatEvent {
     ChatClosed,
     InputTextChanged(String),
     Message(String),
+    /// Server-wrapped chat continuation lines (`> ...`) merged onto the
+    /// previous `Message` for the same speaker. Carries each server-split
+    /// line in order (first the original `Message` text, then each `> ...`
+    /// continuation with its prefix stripped) so the bubble can render the
+    /// same break points the server used instead of re-wrapping the join.
+    /// Locally produced from `ChatReceivedEvent`; never sent over relay.
+    MessageContinuation(Vec<String>),
 }
 
 impl PlayerChatEvent {
