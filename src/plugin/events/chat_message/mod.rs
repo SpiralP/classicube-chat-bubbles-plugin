@@ -59,35 +59,33 @@ pub fn initialize() {
 
                 if let Some(continuation) = is_continuation_message(message) {
                     let result = LAST_CHAT.with_borrow_mut(|cell| {
-                        let (id, mut lines) = cell.take()?;
+                        let (id, lines) = cell.as_mut()?;
                         lines.push(continuation.to_string());
-                        *cell = Some((id, lines.clone()));
-                        Some((id, lines))
+                        Some((*id, lines.clone()))
                     });
                     let Some((player_id, lines)) = result else {
                         warn!(?continuation, "continuation with no prior message");
                         return;
                     };
                     PlayerChatEvent::MessageContinuation(lines).emit(player_id);
-                } else if let Some((player_id, full_nick, said_text)) =
-                    find_player_from_message(message)
-                {
-                    let said_text = said_text.to_string();
-                    if let Some(nick) = full_nick {
-                        OBSERVED_CHAT_PREFIX.with_borrow_mut(|map| {
-                            map.insert(player_id, nick.to_string());
-                        });
-                    }
-                    LAST_CHAT.with_borrow_mut(|cell| {
-                        *cell = Some((player_id, vec![said_text.clone()]));
-                    });
-                    PlayerChatEvent::Message(said_text).emit(player_id);
-                } else {
-                    warn!(?message, "find_player_from_message failed");
-                    LAST_CHAT.with_borrow_mut(|cell| {
-                        *cell = None;
+                    return;
+                }
+
+                let Some((player_id, said_text, observed_prefix)) = resolve_message(message) else {
+                    warn!(?message, "could not resolve player from message");
+                    LAST_CHAT.with_borrow_mut(|cell| *cell = None);
+                    return;
+                };
+
+                if let Some(prefix) = observed_prefix {
+                    OBSERVED_CHAT_PREFIX.with_borrow_mut(|map| {
+                        map.insert(player_id, prefix);
                     });
                 }
+                LAST_CHAT.with_borrow_mut(|cell| {
+                    *cell = Some((player_id, vec![said_text.clone()]));
+                });
+                PlayerChatEvent::Message(said_text).emit(player_id);
             },
         );
         *option = Some(chat_received_handler);
@@ -116,6 +114,61 @@ pub fn free() {
 /// color (idempotent on render), while a user-typed color is preserved.
 fn is_continuation_message(message: &str) -> Option<&str> {
     message.strip_prefix("> ")
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum WhisperKind {
+    Incoming,
+    Outgoing,
+}
+
+/// Peels optional leading `&X` color codes followed by the literal `[>] ` /
+/// `[<] ` whisper marker. Returns the slice that follows the marker so the
+/// caller can hand it back to the regular parser. Servers wrap the brackets
+/// in arbitrary colors (`&9[>] `, `&7[<] `, …), so the color codes are
+/// skipped rather than matched on a specific palette.
+fn detect_whisper_prefix(message: &str) -> Option<(WhisperKind, &str)> {
+    let bytes = message.as_bytes();
+    let mut i = 0;
+    while i + 1 < bytes.len() && bytes[i] == b'&' {
+        i += 2;
+    }
+    let kind = match bytes.get(i..i + 4)? {
+        b"[>] " => WhisperKind::Incoming,
+        b"[<] " => WhisperKind::Outgoing,
+        _ => return None,
+    };
+    Some((kind, &message[i + 4..]))
+}
+
+/// Returns `(player_id, said_text, observed_prefix)` for a non-continuation
+/// chat line. `observed_prefix` is the full nick slice (color + title + name)
+/// to cache for the typing-preview wrap budget, set only on regular chat —
+/// whispers leave it `None` because the `[>] Sender` / `[<] Recipient` prefix
+/// doesn't match what the server prepends to that player's regular chat.
+fn resolve_message(message: &str) -> Option<(u8, String, Option<String>)> {
+    if let Some((kind, remainder)) = detect_whisper_prefix(message) {
+        match kind {
+            // Drop the recipient nick; we are the speaker.
+            WhisperKind::Outgoing => {
+                let pos = remainder.find(": ")?;
+                Some((ENTITY_SELF_ID, remainder[pos + 2..].to_string(), None))
+            }
+            // Reuse the regular parser on the post-marker slice for the
+            // colon split + tab-list lookup (which color-strips internally).
+            WhisperKind::Incoming => {
+                let (player_id, _, said_text) = find_player_from_message(remainder)?;
+                Some((player_id, said_text.to_string(), None))
+            }
+        }
+    } else {
+        let (player_id, full_nick, said_text) = find_player_from_message(message)?;
+        Some((
+            player_id,
+            said_text.to_string(),
+            full_nick.map(str::to_string),
+        ))
+    }
 }
 
 /// Tab-list nick (color + title + name) the server prepends to chat lines for
@@ -180,7 +233,7 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, Option<&str>, &str)> 
 
 #[cfg(test)]
 mod tests {
-    use super::is_continuation_message;
+    use super::{WhisperKind, detect_whisper_prefix, is_continuation_message};
 
     #[test]
     fn keeps_leading_color_intact() {
@@ -199,5 +252,48 @@ mod tests {
     fn rejects_non_continuation() {
         assert_eq!(is_continuation_message("&7Player: &fhi"), None);
         assert_eq!(is_continuation_message(">no space"), None);
+    }
+
+    #[test]
+    fn detects_incoming_whisper() {
+        assert_eq!(
+            detect_whisper_prefix("&9[>] &rFloaty: &fhi"),
+            Some((WhisperKind::Incoming, "&rFloaty: &fhi"))
+        );
+    }
+
+    #[test]
+    fn detects_outgoing_whisper() {
+        assert_eq!(
+            detect_whisper_prefix("&7[<] &rFloaty: &fhi"),
+            Some((WhisperKind::Outgoing, "&rFloaty: &fhi"))
+        );
+    }
+
+    #[test]
+    fn detects_whisper_without_leading_color() {
+        assert_eq!(
+            detect_whisper_prefix("[>] Floaty: hi"),
+            Some((WhisperKind::Incoming, "Floaty: hi"))
+        );
+    }
+
+    #[test]
+    fn detects_whisper_with_multiple_leading_colors() {
+        // Belt-and-suspenders: if a server stacks two color codes before the
+        // bracket, walk past both.
+        assert_eq!(
+            detect_whisper_prefix("&9&l[>] &rFloaty: &fhi"),
+            Some((WhisperKind::Incoming, "&rFloaty: &fhi"))
+        );
+    }
+
+    #[test]
+    fn rejects_non_whisper() {
+        assert_eq!(detect_whisper_prefix("&7Player: &fhi"), None);
+        // `[<3]` emote — only the literal 4-byte `[>] ` / `[<] ` markers match.
+        assert_eq!(detect_whisper_prefix("&9[<3] heart"), None);
+        assert_eq!(detect_whisper_prefix("> &fcontinuation"), None);
+        assert_eq!(detect_whisper_prefix(""), None);
     }
 }
