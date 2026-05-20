@@ -86,6 +86,10 @@ pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
             let mut back_context = OwnedContext2D::new_pow_of_2(width, height, BACK_FILL);
 
             // Center the text block vertically, then stack lines downward.
+            // Lines are left-aligned within the text area; the bubble itself
+            // stays centered on the player's head because its width tracks the
+            // widest line and its texture origin is `-(width / 2)`.
+            let text_x = LEFT_WIDTH as c_int + 1;
             let mut y = height / 2 - total_h / 2;
             for (s, (w, h)) in strings.iter().zip(metrics.iter()) {
                 if *w != 0 && *h != 0 {
@@ -94,12 +98,7 @@ pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
                         font,
                         useShadow: 0,
                     };
-                    Context2D_DrawText(
-                        front_context.as_context_2d_mut(),
-                        &mut args,
-                        width / 2 - *w / 2,
-                        y,
-                    );
+                    Context2D_DrawText(front_context.as_context_2d_mut(), &mut args, text_x, y);
                 }
                 y += *h;
             }
