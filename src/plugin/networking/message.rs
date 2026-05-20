@@ -1,10 +1,13 @@
 use anyhow::{Result, ensure};
 use classicube_helpers::entities::ENTITY_SELF_ID;
-use classicube_relay::{Stream, packet::Scope};
+use classicube_relay::{
+    Stream,
+    packet::{MapScope, Scope},
+};
 use serde::{Deserialize, Serialize};
-use tracing::trace;
+use tracing::{error, trace};
 
-use crate::plugin::events::player_chat_event::PlayerChatEvent;
+use crate::plugin::events::player_chat_event::{PlayerChatEvent, local_handler};
 
 pub const RELAY_CHANNEL: u8 = 202;
 
@@ -40,7 +43,13 @@ impl RelayMessage {
         trace!(?player_id, ?relay_message, "");
         match relay_message {
             RelayMessage::WhosThere => {
-                //
+                if let Some(text) = local_handler::current_broadcast_snapshot() {
+                    let reply =
+                        RelayMessage::PlayerChatEvent(PlayerChatEvent::InputTextChanged(text));
+                    if let Err(e) = reply.send(MapScope { have_plugin: true }) {
+                        error!("WhosThere reply: {:?}", e);
+                    }
+                }
             }
 
             RelayMessage::PlayerChatEvent(event) => {

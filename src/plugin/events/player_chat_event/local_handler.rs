@@ -19,6 +19,14 @@ thread_local!(
     static LAST_SEND: Cell<Option<Instant>> = Default::default();
 );
 
+thread_local!(
+    static BROADCAST_SNAPSHOT: RefCell<Option<String>> = Default::default();
+);
+
+pub fn current_broadcast_snapshot() -> Option<String> {
+    BROADCAST_SNAPSHOT.with_borrow(|s| s.clone())
+}
+
 const INTERVAL: Duration = Duration::from_millis(500);
 
 pub fn handle_local_emit(event: PlayerChatEvent) {
@@ -69,6 +77,15 @@ pub fn handle_local_emit(event: PlayerChatEvent) {
 #[tracing::instrument]
 fn send(event: PlayerChatEvent) {
     debug!("");
+    match &event {
+        PlayerChatEvent::InputTextChanged(text) => {
+            BROADCAST_SNAPSHOT.with_borrow_mut(|s| *s = Some(text.clone()));
+        }
+        PlayerChatEvent::ChatClosed => {
+            BROADCAST_SNAPSHOT.with_borrow_mut(|s| *s = None);
+        }
+        PlayerChatEvent::Message(_) | PlayerChatEvent::MessageContinuation(_) => {}
+    }
     if let Err(e) = RelayMessage::PlayerChatEvent(event).send(MapScope { have_plugin: true }) {
         error!("{:?}", e);
     }
@@ -81,4 +98,7 @@ pub fn free() {
         }
     });
     LAST_SEND.set(None);
+    BROADCAST_SNAPSHOT.with_borrow_mut(|s| {
+        s.take();
+    });
 }
