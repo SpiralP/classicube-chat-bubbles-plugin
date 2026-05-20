@@ -344,6 +344,23 @@ mod tests {
         );
     }
 
+    /// Two-line variant: the user types `Message…wrapped` (48 chars), the
+    /// server prepends `&o[&la&o] &6SpiralP: &f` (23 CP437 bytes) and wraps
+    /// at byte 64, producing
+    ///   `&o[&la&o] &6SpiralP: &fMessage..................................`
+    ///   `> wrapped`
+    /// The typing preview drops the `{nick}: ` from line 1 and `> ` from
+    /// line 2, leaving exactly what the bubble should render above the head.
+    #[test]
+    fn typing_preview_two_line_wrap() {
+        let typed = "Message..................................wrapped";
+        let display = wrap_typing_for_display_impl(typed, "&o[&la&o] &6SpiralP", ascii_palette);
+        assert_eq!(
+            display,
+            vec!["&fMessage..................................", "wrapped"]
+        );
+    }
+
     // Each of the next 5 tests feeds wordwrap a full server-format line with
     // a 32-char nick prefix + `Message` body + dots up to position 64 +
     // `wrapped`. The dots are deliberately inert (no spaces / hyphens / `&`),

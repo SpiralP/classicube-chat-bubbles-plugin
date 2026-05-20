@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use classicube_helpers::{
     entities::ENTITY_SELF_ID,
@@ -31,6 +31,16 @@ thread_local!(
     static LAST_CHAT: RefCell<Option<(u8, Vec<String>)>> = const { RefCell::new(None) };
 );
 
+// Most recent chat-line prefix observed per player id — the `full_nick` slice
+// `find_player_from_message` peels off the left of `": "`. Servers sometimes
+// add titles or flair only in chat (not on nameplates or the tab list), so
+// caching what the server actually prepends lets the typing-preview wrap
+// against the same byte budget the server will. First message a player sends
+// still falls back to the tab-list nick — we haven't observed them yet.
+thread_local!(
+    static OBSERVED_CHAT_PREFIX: RefCell<HashMap<u8, String>> = RefCell::new(HashMap::new());
+);
+
 pub fn initialize() {
     TAB_LIST.with_borrow_mut(|option| {
         *option = Some(TabList::new());
@@ -59,8 +69,15 @@ pub fn initialize() {
                         return;
                     };
                     PlayerChatEvent::MessageContinuation(lines).emit(player_id);
-                } else if let Some((player_id, said_text)) = find_player_from_message(message) {
+                } else if let Some((player_id, full_nick, said_text)) =
+                    find_player_from_message(message)
+                {
                     let said_text = said_text.to_string();
+                    if let Some(nick) = full_nick {
+                        OBSERVED_CHAT_PREFIX.with_borrow_mut(|map| {
+                            map.insert(player_id, nick.to_string());
+                        });
+                    }
                     LAST_CHAT.with_borrow_mut(|cell| {
                         *cell = Some((player_id, vec![said_text.clone()]));
                     });
@@ -87,6 +104,7 @@ pub fn free() {
     LAST_CHAT.with_borrow_mut(|cell| {
         *cell = None;
     });
+    OBSERVED_CHAT_PREFIX.with_borrow_mut(|map| map.clear());
 }
 
 /// `> rest of message` → `Some("rest of message")`. Anything else → `None`.
@@ -116,11 +134,20 @@ pub fn get_nick_name(id: u8) -> Option<String> {
     })
 }
 
-fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
+/// Cached chat-line prefix the server actually prepended for `id`, captured
+/// from the most recent chat message that player sent. Preferred over the
+/// tab-list nick for sizing the typing-preview wrap since some servers add
+/// chat-only titles/flair the tab list doesn't carry. Returns `None` until the
+/// player has chatted at least once this session.
+pub fn get_chat_prefix(id: u8) -> Option<String> {
+    OBSERVED_CHAT_PREFIX.with_borrow(|map| map.get(&id).cloned())
+}
+
+fn find_player_from_message(full_msg: &str) -> Option<(u8, Option<&str>, &str)> {
     if unsafe { Server.IsSinglePlayer } != 0 {
         // in singleplayer there is no tab list, even self id infos are null
 
-        return Some((ENTITY_SELF_ID, full_msg));
+        return Some((ENTITY_SELF_ID, None, full_msg));
     }
 
     // find colon from the left
@@ -147,7 +174,7 @@ fn find_player_from_message(full_msg: &str) -> Option<(u8, &str)> {
             .unwrap()
             .find_entry_by_nick_name(full_nick)
             .and_then(|entry| entry.upgrade())
-            .map(|entry| (entry.get_id(), *said_text))
+            .map(|entry| (entry.get_id(), Some(*full_nick), *said_text))
     })
 }
 

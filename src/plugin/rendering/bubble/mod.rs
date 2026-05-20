@@ -26,7 +26,7 @@ use self::{
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
 use crate::plugin::events::{
     chat_input::wordwrap::{wrap_for_display, wrap_typing_for_display},
-    chat_message::get_nick_name,
+    chat_message::{get_chat_prefix, get_nick_name},
     player_chat_event::{PlayerChatEvent, listener::PlayerChatEventListener},
 };
 
@@ -187,14 +187,19 @@ impl PlayerChatEventListener for Bubble {
                     //
                     // Bubbles are per-entity and InputTextChanged is only
                     // emitted on ENTITY_SELF_ID, so `self.entity` is the local
-                    // player. We feed its tab-list nick into the wrap so the
+                    // player. We feed a chat-line prefix into the wrap so the
                     // first line's 64-byte budget accounts for the `{nick}: `
-                    // the server prepends; singleplayer / pre-tab-list cases
-                    // fall back to bare-text wrap (no prefix to budget for).
+                    // the server prepends. Prefer the most recently observed
+                    // chat prefix (captures server-only titles/flair) and fall
+                    // back to the tab-list nick; singleplayer / pre-tab-list /
+                    // never-spoken cases fall back to bare-text wrap.
                     let lines = self
                         .entity
                         .upgrade()
-                        .and_then(|e| get_nick_name(e.get_id()))
+                        .and_then(|e| {
+                            let id = e.get_id();
+                            get_chat_prefix(id).or_else(|| get_nick_name(id))
+                        })
                         .map(|nick| wrap_typing_for_display(text, &nick))
                         .unwrap_or_else(|| wrap_for_display(text));
                     if lines.is_empty() {
