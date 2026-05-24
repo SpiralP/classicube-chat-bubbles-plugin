@@ -1,7 +1,7 @@
 use std::{
     env,
     fs::{File, read_dir},
-    io::Write,
+    io::{BufReader, Write},
     path::{Path, PathBuf},
 };
 
@@ -55,10 +55,10 @@ fn get_pixels(path: PathBuf) -> (u32, u32, Vec<PackedCol>) {
     // The decoder is a build for reader and can be used to set various decoding options
     // via `Transformations`. The default output transformation is `Transformations::EXPAND
     // | Transformations::STRIP_ALPHA`.
-    let decoder = png::Decoder::new(File::open(path).unwrap());
+    let decoder = png::Decoder::new(BufReader::new(File::open(path).unwrap()));
     let mut reader = decoder.read_info().unwrap();
     // Allocate the output buffer.
-    let mut buf = vec![0; reader.output_buffer_size()];
+    let mut buf = vec![0; reader.output_buffer_size().unwrap()];
     // Read the next frame. An APNG might contain multiple frames.
     let info = reader.next_frame(&mut buf).unwrap();
     // Grab the bytes of the image.

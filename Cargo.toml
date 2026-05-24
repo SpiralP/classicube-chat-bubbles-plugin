@@ -18,8 +18,8 @@ futures = "=0.3.32"
 serde = { version = "=1.0.228", features = ["derive"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-zstd = "=0.11.2"
+zstd = "=0.13.3"
 
 [build-dependencies]
 classicube-sys = "=5.0.0"
-png = "=0.17.16"
+png = "=0.18.1"
