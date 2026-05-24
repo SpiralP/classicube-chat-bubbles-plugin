@@ -205,7 +205,7 @@ impl PlayerChatEventListener for Bubble {
                     if lines.is_empty() {
                         self.typing = None;
                     } else {
-                        self.typing = Some(InnerBubble::new(&lines));
+                        self.typing = InnerBubble::new(&lines);
                     }
                 }
             }
@@ -225,11 +225,15 @@ impl PlayerChatEventListener for Bubble {
                         return;
                     }
                 };
+                let Some(inner) = InnerBubble::new(std::slice::from_ref(text)) else {
+                    warn!("InnerBubble::new returned None (context lost?), skipping message");
+                    return;
+                };
                 let now = Instant::now();
                 self.messages.push_back(Message {
                     spawn_instant: now,
                     die_instant: now + MESSAGE_LIFETIME,
-                    inner: InnerBubble::new(std::slice::from_ref(text)),
+                    inner,
                     position,
                     rotation,
                     head_top_offset,
@@ -251,7 +255,11 @@ impl PlayerChatEventListener for Bubble {
                     warn!("MessageContinuation with no prior message");
                     return;
                 };
-                last.inner = InnerBubble::new(lines);
+                if let Some(inner) = InnerBubble::new(lines) {
+                    last.inner = inner;
+                } else {
+                    warn!("InnerBubble::new returned None (context lost?), keeping prior bubble");
+                }
             }
         }
     }

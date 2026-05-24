@@ -4,8 +4,9 @@ use anyhow::{Error, Result};
 use classicube_helpers::entities::Entity;
 use classicube_sys::{
     Bitmap, Context2D, Context2D_DrawPixels, Context2D_DrawText, DrawTextArgs, Drawer2D_TextHeight,
-    Drawer2D_TextWidth, FONT_FLAGS_FONT_FLAGS_NONE, Font_Free, Font_Make, FontDesc, OwnedContext2D,
-    OwnedString, OwnedTexture, PackedCol, TextureRec, Vec3, cc_int16,
+    Drawer2D_TextWidth, FONT_FLAGS_FONT_FLAGS_NONE, Font_Free, Font_Make, FontDesc, Gfx,
+    Math_NextPowOf2, OwnedContext2D, OwnedString, OwnedTexture, PackedCol, TextureRec, Vec3,
+    cc_int16,
 };
 use tracing::{debug, warn};
 
@@ -46,10 +47,62 @@ pub const SINGLE_LINE_TEXT_HEIGHT: c_int = 12;
 pub const SINGLE_LINE_CANVAS_HEIGHT: c_int =
     SINGLE_LINE_TEXT_HEIGHT + TOP_HEIGHT as c_int + BOTTOM_CENTER_HEIGHT as c_int + 2;
 
-/// returns (front, back)
+/// Mirrors ClassiCube's `Gfx_CheckTextureSize` (`_GraphicsBase.h:424-438`)
+/// against the dimensions the bitmap will end up with after next-pow-of-2
+/// rounding. Returns false when `Gfx_CreateTexture` would reject the bitmap
+/// (returning a zero id and panicking `OwnedGfxTexture::new`).
+fn bitmap_fits_gpu(width: c_int, height: c_int) -> bool {
+    if width <= 0 || height <= 0 {
+        return false;
+    }
+    let pow2_w = Math_NextPowOf2(width);
+    let pow2_h = Math_NextPowOf2(height);
+    // Math_NextPowOf2 shifts past the sign bit for inputs over `i32::MAX/2 + 1`,
+    // landing on `i32::MIN`. Treat that as "doesn't fit" rather than letting
+    // the negative dim sneak past the upper-bound compare below.
+    if pow2_w <= 0 || pow2_h <= 0 {
+        return false;
+    }
+    let (max_w, max_h, min_w, min_h, max_size) = unsafe {
+        (
+            Gfx.MaxTexWidth,
+            Gfx.MaxTexHeight,
+            Gfx.MinTexWidth,
+            Gfx.MinTexHeight,
+            Gfx.MaxTexSize,
+        )
+    };
+    if pow2_w > max_w || pow2_h > max_h {
+        return false;
+    }
+    if min_w != 0 && pow2_w < min_w {
+        return false;
+    }
+    if min_h != 0 && pow2_h < min_h {
+        return false;
+    }
+    if max_size != 0 && (pow2_w as i64) * (pow2_h as i64) > max_size as i64 {
+        return false;
+    }
+    true
+}
+
+/// returns (front, back), or `None` if the bubble can't be drawn right now:
+/// the GPU context is currently lost (e.g. mid-D3D9-device-reset on Windows),
+/// or the resulting bitmap would exceed the backend's texture size limits.
+/// In either case `Gfx_CreateTexture` would return 0 and `OwnedGfxTexture::new`
+/// would panic on the zero id, so we bail before allocating the bitmap.
+/// Oversized inputs are realistic for relayed `InputTextChanged` payloads —
+/// the wire string has no length cap, so a remote sender can wrap into far
+/// more lines than the local input widget would ever produce.
 #[tracing::instrument]
-pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
+pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)> {
     debug!("");
+
+    if unsafe { Gfx.LostContext } != 0 {
+        warn!("Gfx.LostContext set, skipping bubble texture creation");
+        return None;
+    }
 
     let (mut front_context, mut back_context, width, height) = with_font(|font| {
         let strings: Vec<OwnedString> = lines.iter().map(|l| OwnedString::new(l.clone())).collect();
@@ -81,6 +134,15 @@ pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
             let height = body_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
 
             debug!(?max_w, ?total_h, ?width, ?height);
+
+            if !bitmap_fits_gpu(width, height) {
+                warn!(
+                    ?width,
+                    ?height,
+                    "bitmap would exceed GPU texture limits, skipping bubble"
+                );
+                return None;
+            }
 
             let mut front_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
             let mut back_context = OwnedContext2D::new_pow_of_2(width, height, BACK_FILL);
@@ -118,9 +180,9 @@ pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
                 }
             }
 
-            (front_context, back_context, width, height)
+            Some((front_context, back_context, width, height))
         }
-    });
+    })?;
 
     let u2 = width as f32 / front_context.as_bitmap().width as f32;
     let v2 = height as f32 / front_context.as_bitmap().height as f32;
@@ -137,7 +199,7 @@ pub fn create_textures(lines: &[String]) -> (OwnedTexture, OwnedTexture) {
     let front_texture = OwnedTexture::new(front_context.as_bitmap_mut(), position, size, rec);
     let back_texture = OwnedTexture::new(back_context.as_bitmap_mut(), position, size, rec);
 
-    (front_texture, back_texture)
+    Some((front_texture, back_texture))
 }
 
 /// Returns `(eye_world_position, rotation, eye_to_nameplate_offset)`.

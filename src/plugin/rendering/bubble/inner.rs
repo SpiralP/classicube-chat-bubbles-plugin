@@ -20,11 +20,11 @@ pub struct InnerBubble {
     pub transform: Matrix,
 }
 impl InnerBubble {
-    pub fn new(lines: &[String]) -> InnerBubble {
-        InnerBubble {
-            textures: create_textures(lines),
+    pub fn new(lines: &[String]) -> Option<InnerBubble> {
+        Some(InnerBubble {
+            textures: create_textures(lines)?,
             transform: Matrix::IDENTITY,
-        }
+        })
     }
 
     /// World-space height of the rendered bubble. The stacker uses this to
