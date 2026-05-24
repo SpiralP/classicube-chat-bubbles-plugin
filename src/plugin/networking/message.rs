@@ -4,12 +4,24 @@ use classicube_relay::{
     Stream,
     packet::{MapScope, Scope},
 };
+use classicube_sys::{INPUTWIDGET_LEN, INPUTWIDGET_MAX_LINES};
 use serde::{Deserialize, Serialize};
-use tracing::{error, trace};
+use tracing::{error, trace, warn};
 
 use crate::plugin::events::player_chat_event::{PlayerChatEvent, local_handler};
 
 pub const RELAY_CHANNEL: u8 = 202;
+
+/// Cap on the UTF-8 byte length of an `InputTextChanged` payload from the
+/// relay. Local senders pull from a `ChatInputWidget` whose backing buffer
+/// is hard-capped at `INPUTWIDGET_MAX_LINES * INPUTWIDGET_LEN = 3 * 64 = 192`
+/// cp437 bytes (`Widgets.h:237`, `Widgets.c:1259-1260`). Every cp437 byte
+/// maps to a BMP codepoint (`Convert_CP437ToUnicode`), expanding to at most
+/// 3 UTF-8 bytes — so a well-behaved sender never exceeds 576 wire bytes.
+/// Anything past this cap is malformed or hostile; drop it before it reaches
+/// the renderer.
+const MAX_INPUT_TEXT_BYTES: usize =
+    (INPUTWIDGET_MAX_LINES as usize) * (INPUTWIDGET_LEN as usize) * 3;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum RelayMessage {
@@ -53,6 +65,31 @@ impl RelayMessage {
             }
 
             RelayMessage::PlayerChatEvent(event) => {
+                match &event {
+                    PlayerChatEvent::InputTextChanged(text)
+                        if text.len() > MAX_INPUT_TEXT_BYTES =>
+                    {
+                        warn!(
+                            ?player_id,
+                            len = text.len(),
+                            "InputTextChanged exceeds cap, dropping"
+                        );
+                        return Ok(());
+                    }
+                    PlayerChatEvent::Message(_) | PlayerChatEvent::MessageContinuation(_) => {
+                        // local_handler never relays these — receivers regenerate
+                        // them from their own ChatReceivedEvent stream. Anything
+                        // arriving here is malformed or hostile; drop it before
+                        // it reaches the bubble renderer.
+                        warn!(
+                            ?player_id,
+                            ?event,
+                            "unexpected chat-derived event on relay, dropping"
+                        );
+                        return Ok(());
+                    }
+                    _ => {}
+                }
                 event.emit(player_id);
             }
         }
