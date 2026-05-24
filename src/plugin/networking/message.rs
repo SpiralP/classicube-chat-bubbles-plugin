@@ -32,7 +32,7 @@ pub enum RelayMessage {
 impl RelayMessage {
     pub fn send<S: Into<Scope>>(&self, scope: S) -> Result<()> {
         trace!("send {:#?}", self);
-        let data = bincode::serialize(self)?;
+        let data = bincode::serde::encode_to_vec(self, bincode::config::legacy())?;
         let compressed_data = zstd::encode_all(&*data, 0)?;
         let stream = Stream::new(compressed_data, scope)?;
         for packet in stream.packets()? {
@@ -51,7 +51,8 @@ impl RelayMessage {
         ensure!(player_id != ENTITY_SELF_ID, "got ENTITY_SELF_ID");
 
         let data = zstd::decode_all(compressed_data)?;
-        let relay_message = bincode::deserialize::<RelayMessage>(&data)?;
+        let (relay_message, _): (RelayMessage, _) =
+            bincode::serde::decode_from_slice(&data, bincode::config::legacy())?;
         trace!(?player_id, ?relay_message, "");
         match relay_message {
             RelayMessage::WhosThere => {
