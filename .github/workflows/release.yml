@@ -30,7 +30,6 @@ jobs:
     permissions: {} # none needed, uses a custom GitHub App token
     with:
       environment-name: release
-      extends: ./.github/semantic-release.json
       replace-files: |
         Cargo.lock
         Cargo.toml
