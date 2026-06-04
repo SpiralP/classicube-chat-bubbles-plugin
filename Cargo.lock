@@ -160,7 +160,7 @@ dependencies = [
  "bincode",
  "classicube-helpers",
  "classicube-relay",
- "classicube-sys 6.0.4+ClassiCube.1.3.8",
+ "classicube-sys",
  "futures",
  "png",
  "serde",
@@ -171,11 +171,11 @@ dependencies = [
 
 [[package]]
 name = "classicube-helpers"
-version = "4.0.0+ClassiCube.1.3.8"
-source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#17d9483df0ceb34330dbe9baa660307f24774989"
+version = "4.0.1+ClassiCube.1.3.8"
+source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#5c8edb9baf0fdb8e84e19ce3d72752081a2aa20d"
 dependencies = [
  "async-dispatcher",
- "classicube-sys 5.0.0+ClassiCube.1.3.8",
+ "classicube-sys",
  "futures",
  "futures-timer",
  "paste",
@@ -185,27 +185,14 @@ dependencies = [
 
 [[package]]
 name = "classicube-relay"
-version = "0.1.0"
-source = "git+https://github.com/SpiralP/rust-classicube-relay.git#69f1af7b846ee5b687529c76d45044a9dbdae83e"
+version = "0.2.0"
+source = "git+https://github.com/SpiralP/rust-classicube-relay.git#a9818c86664243ba36f5187232354f715b7c7461"
 dependencies = [
  "byteorder",
  "classicube-helpers",
  "lazy_static",
  "thiserror",
  "tracing",
-]
-
-[[package]]
-name = "classicube-sys"
-version = "5.0.0+ClassiCube.1.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ff8b288cd38f7685b2de04f754bb679d212fc6b1f497100ca014cb842da050f"
-dependencies = [
- "bindgen",
- "cc",
- "fs_extra",
- "paste",
- "regex",
 ]
 
 [[package]]

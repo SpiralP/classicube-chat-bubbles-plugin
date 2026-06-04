@@ -40,10 +40,7 @@ pub unsafe fn Texture_Render(tex: &mut Texture, col: PackedCol, front: bool) {
 pub fn context_recreated() {
     TEX_VB.with_borrow_mut(|tex_vb| {
         // create texture buffer
-        *tex_vb = Some(OwnedGfxVertexBuffer::new(
-            VertexFormat__VERTEX_FORMAT_TEXTURED,
-            4,
-        ));
+        *tex_vb = OwnedGfxVertexBuffer::new(VertexFormat__VERTEX_FORMAT_TEXTURED, 4);
     });
 }
 
