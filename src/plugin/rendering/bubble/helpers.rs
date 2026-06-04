@@ -196,8 +196,8 @@ pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)>
         v2,
     };
 
-    let front_texture = OwnedTexture::new(front_context.as_bitmap_mut(), position, size, rec);
-    let back_texture = OwnedTexture::new(back_context.as_bitmap_mut(), position, size, rec);
+    let front_texture = OwnedTexture::new(front_context.as_bitmap_mut(), position, size, rec)?;
+    let back_texture = OwnedTexture::new(back_context.as_bitmap_mut(), position, size, rec)?;
 
     Some((front_texture, back_texture))
 }
