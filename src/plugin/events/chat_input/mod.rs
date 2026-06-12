@@ -142,10 +142,19 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
         let raw = chat_screen.input.base.text.to_string();
         let convert_percents = chat_screen.input.base.convertPercents != 0;
         let text = format_input_line(&raw, convert_percents, is_valid_color_code);
+        let display_text = display_for_input(&text, is_in_whisper_mode());
+
+        // Dedupe on the display string (not the raw text) so consecutive
+        // keystrokes inside a private message don't re-bake the `...` texture
+        // or re-broadcast it over the relay.
         let changed = LAST_INPUT.with_borrow_mut(|option| {
-            if option.as_ref().map(|last| last != &text).unwrap_or(true) {
+            if option
+                .as_ref()
+                .map(|last| last != &display_text)
+                .unwrap_or(true)
+            {
                 // changed
-                *option = Some(text.clone());
+                *option = Some(display_text.clone());
                 true
             } else {
                 false
@@ -153,11 +162,9 @@ fn check_input_changed(open: bool, chat_screen: Option<&'static ChatScreen>) {
         });
 
         if changed {
-            debug!(?text, "changed");
+            debug!(?display_text, "changed");
 
-            if !is_sensitive_text(&text) && !is_in_whisper_mode() {
-                PlayerChatEvent::InputTextChanged(text).emit(ENTITY_SELF_ID);
-            }
+            PlayerChatEvent::InputTextChanged(display_text).emit(ENTITY_SELF_ID);
         }
     }
 }
@@ -198,6 +205,24 @@ fn format_input_line(
     String::from_utf8(out).expect("ascii-only byte swap preserves utf-8")
 }
 
+/// Maps the formatted chat-input line to what the typing bubble should show.
+/// Empty input hides the bubble; private commands / whispers / ops-messages
+/// and whisper-mode collapse to a `...` placeholder so the contents never leak
+/// (locally or over the relay -- only the literal `...` is ever emitted, never
+/// the private text); everything else shows verbatim.
+///
+/// The empty check comes first so erasing the input to empty hides the bubble
+/// even in whisper-mode or right after typing a command.
+fn display_for_input(text: &str, whisper_mode: bool) -> String {
+    if text.is_empty() {
+        String::new()
+    } else if is_sensitive_text(text) || whisper_mode {
+        "...".to_string()
+    } else {
+        text.to_string()
+    }
+}
+
 fn is_sensitive_text(text: &str) -> bool {
     let c = text.get(0..1).unwrap_or("");
     // don't show whispers or commands
@@ -227,7 +252,7 @@ pub fn free() {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_input_line, is_sensitive_text};
+    use super::{display_for_input, format_input_line, is_sensitive_text};
 
     /// Default ClassiCube palette covers '0'..='9', 'a'..='f', 'A'..='F'.
     fn default_palette(c: u8) -> bool {
@@ -310,6 +335,34 @@ mod tests {
     fn empty_palette_never_converts() {
         // Mirrors ClassiCube startup before palette init (or all colors zero).
         assert_eq!(format_input_line("%chello", true, |_| false), "%chello");
+    }
+
+    #[test]
+    fn display_for_input_hides_on_empty() {
+        // Erasing everything hides the bubble, even in whisper-mode.
+        assert_eq!(display_for_input("", false), "");
+        assert_eq!(display_for_input("", true), "");
+    }
+
+    #[test]
+    fn display_for_input_masks_private_messages() {
+        assert_eq!(display_for_input("/help", false), "...");
+        assert_eq!(display_for_input("@SpiralP hi", false), "...");
+        assert_eq!(display_for_input("##secret", false), "...");
+        assert_eq!(display_for_input("++admin", false), "...");
+    }
+
+    #[test]
+    fn display_for_input_masks_everything_in_whisper_mode() {
+        // In whisper-mode the whole line is private, so even plain text masks.
+        assert_eq!(display_for_input("hello", true), "...");
+    }
+
+    #[test]
+    fn display_for_input_shows_normal_text_verbatim() {
+        assert_eq!(display_for_input("hello", false), "hello");
+        assert_eq!(display_for_input("#single", false), "#single");
+        assert_eq!(display_for_input("+single", false), "+single");
     }
 
     #[test]
