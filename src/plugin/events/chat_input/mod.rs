@@ -102,6 +102,21 @@ pub fn initialize() {
                                 }
                             }
                         }
+
+                        // Re-opening chat starts a fresh typing session: clear
+                        // the change-dedup cache so the first input state always
+                        // emits. A re-opened `/` produces the constant `...`
+                        // display, which would otherwise be deduped against the
+                        // previous session's last `...` and never show.
+                        LAST_INPUT.with_borrow_mut(|last| {
+                            last.take();
+                        });
+                        // The engine opens chat synchronously before this handler
+                        // runs and has already prefilled the input (e.g. `/` when
+                        // opened via the slash key), so detect it now instead of
+                        // waiting for a follow-up Press event (which may be absent
+                        // for the opening char).
+                        check_input_changed(open.get(), chat_screen.get());
                     }
                 }
             });
