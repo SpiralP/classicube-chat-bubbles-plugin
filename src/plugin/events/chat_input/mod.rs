@@ -240,14 +240,19 @@ fn display_for_input(text: &str, whisper_mode: bool) -> String {
 
 fn is_sensitive_text(text: &str) -> bool {
     let c = text.get(0..1).unwrap_or("");
-    // don't show whispers or commands
-    if c == "@" || c == "/" {
+    if matches!(c, "@" | "/") {
         return true;
     }
-
-    let c = text.get(0..2).unwrap_or("");
-    // don't show "To Ops" or "To Admins"
-    c == "##" || c == "++"
+    // A lone '#' or '+' could be the start of '##' (Ops) or '++' (Admins) chat
+    // -- mask from the first character to avoid leaking which channel. But
+    // '#word' / '+word' is public (e.g. "#1", "+rep").
+    if c == "#" {
+        return text.len() == 1 || text.starts_with("##");
+    }
+    if c == "+" {
+        return text.len() == 1 || text.starts_with("++");
+    }
+    false
 }
 
 pub fn free() {
@@ -365,6 +370,8 @@ mod tests {
         assert_eq!(display_for_input("@SpiralP hi", false), "...");
         assert_eq!(display_for_input("##secret", false), "...");
         assert_eq!(display_for_input("++admin", false), "...");
+        assert_eq!(display_for_input("#", false), "...");
+        assert_eq!(display_for_input("+", false), "...");
     }
 
     #[test]
@@ -390,5 +397,7 @@ mod tests {
         assert!(!is_sensitive_text(""));
         assert!(!is_sensitive_text("#single"));
         assert!(!is_sensitive_text("+single"));
+        assert!(is_sensitive_text("#"));
+        assert!(is_sensitive_text("+"));
     }
 }
