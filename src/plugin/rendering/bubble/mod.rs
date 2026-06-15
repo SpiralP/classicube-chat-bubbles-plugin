@@ -21,6 +21,7 @@ use tracing::warn;
 
 use self::{
     easing::{clamp01, decay_factor, ease_in_cubic, ease_out_cubic, smoothstep},
+    helpers::BubbleStyle,
     inner::InnerBubble,
 };
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
@@ -202,17 +203,23 @@ impl PlayerChatEventListener for Bubble {
                         if lines.is_empty() {
                             None
                         } else {
-                            InnerBubble::new(&lines)
+                            InnerBubble::new(&lines, BubbleStyle::Bordered)
                         }
                     }
 
-                    Some(Presence::EscapeMenu) => InnerBubble::new(&["(in menu)".to_string()]),
-
-                    Some(Presence::BlockMenu) => {
-                        InnerBubble::new(&["(picking a block)".to_string()])
+                    Some(Presence::EscapeMenu) => {
+                        InnerBubble::new(&["(in menu)".to_string()], BubbleStyle::Borderless)
                     }
 
-                    Some(Presence::TabList) => InnerBubble::new(&["(viewing players)".to_string()]),
+                    Some(Presence::BlockMenu) => InnerBubble::new(
+                        &["(picking a block)".to_string()],
+                        BubbleStyle::Borderless,
+                    ),
+
+                    Some(Presence::TabList) => InnerBubble::new(
+                        &["(viewing players)".to_string()],
+                        BubbleStyle::Borderless,
+                    ),
                 };
             }
 
@@ -231,7 +238,9 @@ impl PlayerChatEventListener for Bubble {
                         return;
                     }
                 };
-                let Some(inner) = InnerBubble::new(std::slice::from_ref(text)) else {
+                let Some(inner) =
+                    InnerBubble::new(std::slice::from_ref(text), BubbleStyle::Bordered)
+                else {
                     warn!("InnerBubble::new returned None (context lost?), skipping message");
                     return;
                 };
@@ -261,7 +270,7 @@ impl PlayerChatEventListener for Bubble {
                     warn!("MessageContinuation with no prior message");
                     return;
                 };
-                if let Some(inner) = InnerBubble::new(lines) {
+                if let Some(inner) = InnerBubble::new(lines, BubbleStyle::Bordered) {
                     last.inner = inner;
                 } else {
                     warn!("InnerBubble::new returned None (context lost?), keeping prior bubble");

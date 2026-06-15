@@ -4,7 +4,7 @@ use classicube_helpers::entities::Entity;
 use classicube_sys::{MATH_DEG2RAD, Matrix, OwnedTexture, Vec3};
 use tracing::warn;
 
-use super::helpers::{SINGLE_LINE_CANVAS_HEIGHT, create_textures, get_transform};
+use super::helpers::{BubbleStyle, SINGLE_LINE_CANVAS_HEIGHT, create_textures, get_transform};
 
 // pub const BUBBLE_WIDTH: u8 = 4;
 pub const BUBBLE_HEIGHT: f32 = 0.5;
@@ -20,9 +20,9 @@ pub struct InnerBubble {
     pub transform: Matrix,
 }
 impl InnerBubble {
-    pub fn new(lines: &[String]) -> Option<InnerBubble> {
+    pub fn new(lines: &[String], style: BubbleStyle) -> Option<InnerBubble> {
         Some(InnerBubble {
-            textures: create_textures(lines)?,
+            textures: create_textures(lines, style)?,
             transform: Matrix::IDENTITY,
         })
     }

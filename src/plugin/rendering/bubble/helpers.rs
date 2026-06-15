@@ -14,6 +14,17 @@ use crate::bubble_image_parts::*;
 
 const BACK_FILL: PackedCol = 0;
 
+/// Whether to composite the speech-bubble frame (9-slice border + tail +
+/// solid fill) around the text. `Borderless` drops all chrome and enables a
+/// text drop shadow for legibility -- used for the non-typed presence labels
+/// (menu / block picker / tab list) so they read as lightweight status rather
+/// than spoken chat.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BubbleStyle {
+    Bordered,
+    Borderless,
+}
+
 thread_local!(
     static FONT: RefCell<Option<FontDesc>> = const { RefCell::new(None) };
 );
@@ -96,13 +107,19 @@ fn bitmap_fits_gpu(width: c_int, height: c_int) -> bool {
 /// the wire string has no length cap, so a remote sender can wrap into far
 /// more lines than the local input widget would ever produce.
 #[tracing::instrument]
-pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)> {
+pub fn create_textures(
+    lines: &[String],
+    style: BubbleStyle,
+) -> Option<(OwnedTexture, OwnedTexture)> {
     debug!("");
 
     if unsafe { Gfx.LostContext } != 0 {
         warn!("Gfx.LostContext set, skipping bubble texture creation");
         return None;
     }
+
+    let bordered = style == BubbleStyle::Bordered;
+    let use_shadow: u8 = if bordered { 0 } else { 1 };
 
     let (mut front_context, mut back_context, width, height) = with_font(|font| {
         let strings: Vec<OwnedString> = lines.iter().map(|l| OwnedString::new(l.clone())).collect();
@@ -114,7 +131,7 @@ pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)>
                     let mut args = DrawTextArgs {
                         text: s.get_cc_string(),
                         font,
-                        useShadow: 0,
+                        useShadow: use_shadow,
                     };
                     let w = Drawer2D_TextWidth(&mut args);
                     let h = if w == 0 {
@@ -130,8 +147,17 @@ pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)>
             let total_h: c_int = metrics.iter().map(|(_, h)| *h).sum();
             let body_height = total_h.max(SINGLE_LINE_TEXT_HEIGHT);
 
-            let width = max_w + (LEFT_WIDTH as c_int) * 2 + 2;
-            let height = body_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2;
+            let (width, height, text_x) = if bordered {
+                (
+                    max_w + (LEFT_WIDTH as c_int) * 2 + 2,
+                    body_height + (TOP_HEIGHT as c_int) + (BOTTOM_CENTER_HEIGHT as c_int) + 2,
+                    LEFT_WIDTH as c_int + 1,
+                )
+            } else {
+                // No border chrome; +2 gives a 1px margin on each side so the
+                // drop shadow isn't clipped at the texture edge.
+                (max_w + 2, body_height + 2, 1)
+            };
 
             debug!(?max_w, ?total_h, ?width, ?height);
 
@@ -144,41 +170,45 @@ pub fn create_textures(lines: &[String]) -> Option<(OwnedTexture, OwnedTexture)>
                 return None;
             }
 
-            let mut front_context = OwnedContext2D::new_pow_of_2(width, height, FRONT_COLOR);
+            let front_fill = if bordered { FRONT_COLOR } else { BACK_FILL };
+            let mut front_context = OwnedContext2D::new_pow_of_2(width, height, front_fill);
             let mut back_context = OwnedContext2D::new_pow_of_2(width, height, BACK_FILL);
 
             // Center the text block vertically, then stack lines downward.
             // Lines are left-aligned within the text area; the bubble itself
             // stays centered on the player's head because its width tracks the
             // widest line and its texture origin is `-(width / 2)`.
-            let text_x = LEFT_WIDTH as c_int + 1;
             let mut y = height / 2 - total_h / 2;
             for (s, (w, h)) in strings.iter().zip(metrics.iter()) {
                 if *w != 0 && *h != 0 {
                     let mut args = DrawTextArgs {
                         text: s.get_cc_string(),
                         font,
-                        useShadow: 0,
+                        useShadow: use_shadow,
                     };
                     Context2D_DrawText(front_context.as_context_2d_mut(), &mut args, text_x, y);
                 }
                 y += *h;
             }
 
-            draw_parts(front_context.as_context_2d_mut(), width, height);
-            draw_parts(back_context.as_context_2d_mut(), width, height);
+            if bordered {
+                draw_parts(front_context.as_context_2d_mut(), width, height);
+                draw_parts(back_context.as_context_2d_mut(), width, height);
 
-            // Border PNGs include FRONT_COLOR pixels next to the antialias edge
-            // that blend invisibly into the front canvas's fill. On the
-            // transparent back canvas they'd render as an opaque stripe, so
-            // strip them out, leaving just the antialias outline.
-            let back_bitmap = back_context.as_bitmap_mut();
-            let total = (back_bitmap.width * back_bitmap.height) as usize;
-            for px in slice::from_raw_parts_mut(back_bitmap.scan0, total) {
-                if *px == FRONT_COLOR {
-                    *px = BACK_FILL;
+                // Border PNGs include FRONT_COLOR pixels next to the antialias
+                // edge that blend invisibly into the front canvas's fill. On the
+                // transparent back canvas they'd render as an opaque stripe, so
+                // strip them out, leaving just the antialias outline.
+                let back_bitmap = back_context.as_bitmap_mut();
+                let total = (back_bitmap.width * back_bitmap.height) as usize;
+                for px in slice::from_raw_parts_mut(back_bitmap.scan0, total) {
+                    if *px == FRONT_COLOR {
+                        *px = BACK_FILL;
+                    }
                 }
             }
+            // Borderless: back canvas stays transparent -- the label is
+            // front-faced only, which avoids mirrored-text on the back face.
 
             Some((front_context, back_context, width, height))
         }
