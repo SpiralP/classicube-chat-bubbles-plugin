@@ -7,10 +7,17 @@ use tracing::debug;
 
 use self::listener::with_all_listeners;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Presence {
+    Typing(String),
+    EscapeMenu,
+    BlockMenu,
+    TabList,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PlayerChatEvent {
-    ChatClosed,
-    InputTextChanged(String),
+    PresenceChanged(Option<Presence>),
     Message(String),
     /// Server-wrapped chat continuation lines (`> ...`) merged onto the
     /// previous `Message` for the same speaker. Carries each server-split

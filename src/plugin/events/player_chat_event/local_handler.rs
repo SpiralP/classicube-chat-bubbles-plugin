@@ -8,7 +8,7 @@ use classicube_relay::packet::MapScope;
 use futures::future::AbortHandle;
 use tracing::{debug, error};
 
-use super::PlayerChatEvent;
+use super::{PlayerChatEvent, Presence};
 use crate::plugin::networking::message::RelayMessage;
 
 thread_local!(
@@ -20,10 +20,10 @@ thread_local!(
 );
 
 thread_local!(
-    static BROADCAST_SNAPSHOT: RefCell<Option<String>> = Default::default();
+    static BROADCAST_SNAPSHOT: RefCell<Option<Presence>> = Default::default();
 );
 
-pub fn current_broadcast_snapshot() -> Option<String> {
+pub fn current_broadcast_snapshot() -> Option<Presence> {
     BROADCAST_SNAPSHOT.with_borrow(|s| s.clone())
 }
 
@@ -31,18 +31,9 @@ const INTERVAL: Duration = Duration::from_millis(500);
 
 pub fn handle_local_emit(event: PlayerChatEvent) {
     DEBOUNCE_FUTURE.with_borrow_mut(move |debounce_future| match &event {
-        PlayerChatEvent::ChatClosed => {
-            LAST_SEND.set(None);
+        PlayerChatEvent::PresenceChanged(Some(Presence::Typing(_))) => {
             if let Some(handle) = debounce_future.take() {
-                handle.abort()
-            }
-
-            send(event);
-        }
-
-        PlayerChatEvent::InputTextChanged(_) => {
-            if let Some(handle) = debounce_future.take() {
-                handle.abort()
+                handle.abort();
             }
 
             let instant = if let Some(last_send) = LAST_SEND.get() {
@@ -57,7 +48,6 @@ pub fn handle_local_emit(event: PlayerChatEvent) {
             } else {
                 let (f, handle) = futures::future::abortable(async move {
                     async_manager::sleep(INTERVAL).await;
-
                     LAST_SEND.set(Some(Instant::now()));
                     send(event);
                 });
@@ -66,6 +56,16 @@ pub fn handle_local_emit(event: PlayerChatEvent) {
                     let _ = f.await;
                 });
             }
+        }
+
+        PlayerChatEvent::PresenceChanged(_) => {
+            if let Some(handle) = debounce_future.take() {
+                handle.abort();
+            }
+            // Discrete, infrequent transitions (enter/leave menu, block
+            // picker, tab list, chat closed): send immediately.
+            LAST_SEND.set(None);
+            send(event);
         }
 
         PlayerChatEvent::Message(_) | PlayerChatEvent::MessageContinuation(_) => {
@@ -79,11 +79,8 @@ pub fn handle_local_emit(event: PlayerChatEvent) {
 fn send(event: PlayerChatEvent) {
     debug!("");
     match &event {
-        PlayerChatEvent::InputTextChanged(text) => {
-            BROADCAST_SNAPSHOT.with_borrow_mut(|s| *s = Some(text.clone()));
-        }
-        PlayerChatEvent::ChatClosed => {
-            BROADCAST_SNAPSHOT.with_borrow_mut(|s| *s = None);
+        PlayerChatEvent::PresenceChanged(presence) => {
+            BROADCAST_SNAPSHOT.with_borrow_mut(|s| *s = presence.clone());
         }
         PlayerChatEvent::Message(_) | PlayerChatEvent::MessageContinuation(_) => {}
     }

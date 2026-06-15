@@ -8,11 +8,11 @@ use classicube_sys::{INPUTWIDGET_LEN, INPUTWIDGET_MAX_LINES};
 use serde::{Deserialize, Serialize};
 use tracing::{error, trace, warn};
 
-use crate::plugin::events::player_chat_event::{PlayerChatEvent, local_handler};
+use crate::plugin::events::player_chat_event::{PlayerChatEvent, Presence, local_handler};
 
 pub const RELAY_CHANNEL: u8 = 202;
 
-/// Cap on the UTF-8 byte length of an `InputTextChanged` payload from the
+/// Cap on the UTF-8 byte length of a `Presence::Typing` payload from the
 /// relay. Local senders pull from a `ChatInputWidget` whose backing buffer
 /// is hard-capped at `INPUTWIDGET_MAX_LINES * INPUTWIDGET_LEN = 3 * 64 = 192`
 /// cp437 bytes (`Widgets.h:237`, `Widgets.c:1259-1260`). Every cp437 byte
@@ -56,9 +56,10 @@ impl RelayMessage {
         trace!(?player_id, ?relay_message, "");
         match relay_message {
             RelayMessage::WhosThere => {
-                if let Some(text) = local_handler::current_broadcast_snapshot() {
-                    let reply =
-                        RelayMessage::PlayerChatEvent(PlayerChatEvent::InputTextChanged(text));
+                if let Some(presence) = local_handler::current_broadcast_snapshot() {
+                    let reply = RelayMessage::PlayerChatEvent(PlayerChatEvent::PresenceChanged(
+                        Some(presence),
+                    ));
                     if let Err(e) = reply.send(MapScope { have_plugin: true }) {
                         error!("WhosThere reply: {:?}", e);
                     }
@@ -67,13 +68,13 @@ impl RelayMessage {
 
             RelayMessage::PlayerChatEvent(event) => {
                 match &event {
-                    PlayerChatEvent::InputTextChanged(text)
+                    PlayerChatEvent::PresenceChanged(Some(Presence::Typing(text)))
                         if text.len() > MAX_INPUT_TEXT_BYTES =>
                     {
                         warn!(
                             ?player_id,
                             len = text.len(),
-                            "InputTextChanged exceeds cap, dropping"
+                            "PresenceChanged(Typing) exceeds cap, dropping"
                         );
                         return Ok(());
                     }

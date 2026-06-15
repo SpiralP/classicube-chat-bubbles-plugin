@@ -344,7 +344,7 @@ mod tests {
         );
     }
 
-    /// Two-line variant: the user types `Message…wrapped` (48 chars), the
+    /// Two-line variant: the user types `Message...wrapped` (48 chars), the
     /// server prepends `&o[&la&o] &6SpiralP: &f` (23 CP437 bytes) and wraps
     /// at byte 64, producing
     ///   `&o[&la&o] &6SpiralP: &fMessage..................................`

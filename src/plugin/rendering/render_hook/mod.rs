@@ -44,6 +44,7 @@ fn calc_ortho_matrix(width: f32, height: f32, z_near: f32, z_far: f32) -> Matrix
 /// render. Switch to 3D-style state, draw bubbles, then restore 2D state so
 /// the HUD (and any later screens) see the state they expect.
 unsafe extern "C" fn render(_: *mut c_void, _: f32) {
+    crate::plugin::events::local_presence::poll();
     unsafe {
         Gfx_SetDepthTest(1);
         // Depth-write OFF: bubbles are translucent quads. Leaving depth-write

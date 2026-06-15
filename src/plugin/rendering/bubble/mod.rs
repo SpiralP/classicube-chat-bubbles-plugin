@@ -25,9 +25,9 @@ use self::{
 };
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
 use crate::plugin::events::{
-    chat_input::wordwrap::{wrap_for_display, wrap_typing_for_display},
     chat_message::{get_chat_prefix, get_nick_name},
-    player_chat_event::{PlayerChatEvent, listener::PlayerChatEventListener},
+    local_presence::wordwrap::{wrap_for_display, wrap_typing_for_display},
+    player_chat_event::{PlayerChatEvent, Presence, listener::PlayerChatEventListener},
 };
 
 const MESSAGE_LIFETIME: Duration = Duration::from_secs(5);
@@ -47,7 +47,7 @@ struct Message {
     die_instant: Instant,
     inner: InnerBubble,
     /// Eye world position snapshotted at message-creation time. Sent bubbles
-    /// stay anchored where the player was when they spoke (unlike the typing
+    /// stay anchored where the player was when they spoke (unlike the status
     /// bubble, which follows the player live).
     position: Vec3,
     rotation: Vec3,
@@ -60,7 +60,7 @@ struct Message {
 
 pub struct Bubble {
     entity: Weak<Entity>,
-    typing: Option<InnerBubble>,
+    status: Option<InnerBubble>,
     messages: VecDeque<Message>,
     last_render: Option<Instant>,
 }
@@ -69,7 +69,7 @@ impl Bubble {
     pub fn new(entity: Weak<Entity>) -> Self {
         Self {
             entity,
-            typing: Default::default(),
+            status: Default::default(),
             messages: Default::default(),
             last_render: None,
         }
@@ -120,12 +120,12 @@ impl Renderable for Bubble {
         // first. Doing this in a separate pass avoids allocating a per-frame
         // targets vec while keeping the render pass below in oldest→newest
         // order (so newer bubbles composite on top; depth-write is off).
-        let typing_advance = self
-            .typing
+        let status_advance = self
+            .status
             .as_ref()
             .map(|t| t.height_world() - STACK_OVERLAP)
             .unwrap_or(0.0);
-        let mut y_acc = typing_advance;
+        let mut y_acc = status_advance;
         for message in self.messages.iter_mut().rev() {
             message.stack_y += (y_acc - message.stack_y) * stack_factor;
             y_acc += message.inner.height_world() - STACK_OVERLAP;
@@ -151,10 +151,10 @@ impl Renderable for Bubble {
             Self::render_inner(&mut message.inner, alpha);
         }
 
-        // Typing bubble renders LAST so it draws on top of the message stack
+        // Status bubble renders LAST so it draws on top of the message stack
         // (depth-write is off, so render order decides overlap). It also
         // follows the player live, unlike sent messages.
-        if let Some(typing) = self.typing.as_mut() {
+        if let Some(status) = self.status.as_mut() {
             let entity = match self.entity.upgrade() {
                 Some(e) => e,
                 None => {
@@ -162,8 +162,8 @@ impl Renderable for Bubble {
                     return;
                 }
             };
-            typing.update_transform_entity(&entity, 0.0);
-            Self::render_inner(typing, 1.0);
+            status.update_transform_entity(&entity, 0.0);
+            Self::render_inner(status, 1.0);
         }
     }
 }
@@ -171,43 +171,49 @@ impl Renderable for Bubble {
 impl PlayerChatEventListener for Bubble {
     fn handle_event(&mut self, event: &PlayerChatEvent) {
         match event {
-            PlayerChatEvent::ChatClosed => {
-                self.typing = None;
-            }
+            PlayerChatEvent::PresenceChanged(opt) => {
+                self.status = match opt {
+                    None => None,
 
-            PlayerChatEvent::InputTextChanged(text) => {
-                if text.is_empty() {
-                    self.typing = None;
-                } else {
-                    // Pre-wrap so the typing preview matches what the server
-                    // will send when the player hits enter. Strip the `> `
-                    // each continuation line gets — server-received
-                    // continuations are already `> `-stripped before reaching
-                    // the renderer, so this keeps both display paths consistent.
-                    //
-                    // Bubbles are per-entity and InputTextChanged is only
-                    // emitted on ENTITY_SELF_ID, so `self.entity` is the local
-                    // player. We feed a chat-line prefix into the wrap so the
-                    // first line's 64-byte budget accounts for the `{nick}: `
-                    // the server prepends. Prefer the most recently observed
-                    // chat prefix (captures server-only titles/flair) and fall
-                    // back to the tab-list nick; singleplayer / pre-tab-list /
-                    // never-spoken cases fall back to bare-text wrap.
-                    let lines = self
-                        .entity
-                        .upgrade()
-                        .and_then(|e| {
-                            let id = e.get_id();
-                            get_chat_prefix(id).or_else(|| get_nick_name(id))
-                        })
-                        .map(|nick| wrap_typing_for_display(text, &nick))
-                        .unwrap_or_else(|| wrap_for_display(text));
-                    if lines.is_empty() {
-                        self.typing = None;
-                    } else {
-                        self.typing = InnerBubble::new(&lines);
+                    Some(Presence::Typing(text)) => {
+                        // Pre-wrap so the typing preview matches what the server
+                        // will send when the player hits enter. Strip the `> `
+                        // each continuation line gets — server-received
+                        // continuations are already `> `-stripped before reaching
+                        // the renderer, so this keeps both display paths consistent.
+                        //
+                        // Bubbles are per-entity and PresenceChanged is only
+                        // emitted on ENTITY_SELF_ID, so `self.entity` is the local
+                        // player. We feed a chat-line prefix into the wrap so the
+                        // first line's 64-byte budget accounts for the `{nick}: `
+                        // the server prepends. Prefer the most recently observed
+                        // chat prefix (captures server-only titles/flair) and fall
+                        // back to the tab-list nick; singleplayer / pre-tab-list /
+                        // never-spoken cases fall back to bare-text wrap.
+                        let lines = self
+                            .entity
+                            .upgrade()
+                            .and_then(|e| {
+                                let id = e.get_id();
+                                get_chat_prefix(id).or_else(|| get_nick_name(id))
+                            })
+                            .map(|nick| wrap_typing_for_display(text, &nick))
+                            .unwrap_or_else(|| wrap_for_display(text));
+                        if lines.is_empty() {
+                            None
+                        } else {
+                            InnerBubble::new(&lines)
+                        }
                     }
-                }
+
+                    Some(Presence::EscapeMenu) => InnerBubble::new(&["(in menu)".to_string()]),
+
+                    Some(Presence::BlockMenu) => {
+                        InnerBubble::new(&["(picking a block)".to_string()])
+                    }
+
+                    Some(Presence::TabList) => InnerBubble::new(&["(viewing players)".to_string()]),
+                };
             }
 
             PlayerChatEvent::Message(text) => {
