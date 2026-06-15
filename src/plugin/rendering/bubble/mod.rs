@@ -33,7 +33,7 @@ use tracing::warn;
 use self::{
     easing::{clamp01, decay_factor, ease_in_cubic, ease_out_cubic, smoothstep},
     helpers::BubbleStyle,
-    inner::InnerBubble,
+    inner::{BUBBLE_HEIGHT, InnerBubble},
 };
 use super::{context::vertex_buffer::Texture_Render, render_hook::renderable::Renderable};
 use crate::plugin::events::{
@@ -135,7 +135,11 @@ impl Renderable for Bubble {
         let status_advance = self
             .status
             .as_ref()
-            .map(|t| t.height_world() - STACK_OVERLAP)
+            // Borderless status icons have a short canvas (~0.23 world units),
+            // so their raw height_world would let the next message overlap the
+            // icon. Clamp to a full bordered slot; bordered statuses are
+            // already >= BUBBLE_HEIGHT so this is a no-op for them.
+            .map(|t| t.height_world().max(BUBBLE_HEIGHT) - STACK_OVERLAP)
             .unwrap_or(0.0);
         let mut y_acc = status_advance;
         for message in self.messages.iter_mut().rev() {
