@@ -1,6 +1,17 @@
+#[cfg(test)]
+mod tests;
+
 mod easing;
 mod helpers;
 mod inner;
+
+// CP437 glyphs for the menu-state icon bubbles. ClassiCube's font is code page
+// 437; OwnedString::new maps these Unicode codepoints back to their CP437 byte
+// (Convert_CodepointToCP437) before drawing. Written as \u{} escapes to keep
+// the source ASCII -- the glyphs are bullet / box-corner / triple-bar.
+const DOT: char = '\u{2219}'; // CP437 0xF9
+const CORNER: char = '\u{250C}'; // CP437 0xDA
+const BARS: char = '\u{2261}'; // CP437 0xF0
 
 pub fn free() {
     helpers::free();
@@ -208,18 +219,17 @@ impl PlayerChatEventListener for Bubble {
                     }
 
                     Some(Presence::EscapeMenu) => {
-                        InnerBubble::new(&["(in menu)".to_string()], BubbleStyle::Borderless)
+                        InnerBubble::new(&[format!("&f[&6{CORNER}&f]")], BubbleStyle::Borderless)
                     }
 
                     Some(Presence::BlockMenu) => InnerBubble::new(
-                        &["(picking a block)".to_string()],
+                        &[format!("&f[&a{DOT} &s{DOT} &7{DOT}&f]")],
                         BubbleStyle::Borderless,
                     ),
 
-                    Some(Presence::TabList) => InnerBubble::new(
-                        &["(viewing players)".to_string()],
-                        BubbleStyle::Borderless,
-                    ),
+                    Some(Presence::TabList) => {
+                        InnerBubble::new(&[format!("&f[&7{BARS}&f]")], BubbleStyle::Borderless)
+                    }
                 };
             }
 
