@@ -25,8 +25,8 @@ use std::{
 
 use classicube_helpers::entities::Entity;
 use classicube_sys::{
-    Gfx, Gfx_LoadMatrix, Gfx_SetAlphaBlending, Gfx_SetFaceCulling, Gfx_SetTexturing,
-    MatrixType__MATRIX_VIEW, PackedCol_Make, Vec3,
+    Gfx, Gfx_LoadMatrix, Gfx_SetAlphaArgBlend, Gfx_SetAlphaBlending, Gfx_SetFaceCulling,
+    Gfx_SetTexturing, MatrixType__MATRIX_VIEW, PackedCol_Make, Vec3,
 };
 use tracing::warn;
 
@@ -100,12 +100,16 @@ impl Bubble {
                 Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &m);
 
                 Gfx_SetAlphaBlending(1);
+                // D3D9: SELECTARG1 (default) discards vertex Col.A; MODULATE
+                // multiplies it in so the fade-out is visible. No-op on GL/D3D11.
+                Gfx_SetAlphaArgBlend(1);
                 Gfx_SetTexturing(1);
                 Gfx_SetFaceCulling(1);
 
                 Texture_Render(texture, col, front);
 
                 Gfx_SetFaceCulling(0);
+                Gfx_SetAlphaArgBlend(0);
                 Gfx_SetAlphaBlending(0);
 
                 Gfx_LoadMatrix(MatrixType__MATRIX_VIEW, &raw const Gfx.View);
