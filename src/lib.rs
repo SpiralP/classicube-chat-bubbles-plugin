@@ -15,11 +15,6 @@ extern "C" fn init() {
     logger::initialize(cfg!(debug_assertions), false);
 
     tracing::debug_span!("init").in_scope(|| {
-        debug!(
-            "Init {}",
-            concat!(env!("CARGO_PKG_NAME"), " v", env!("CARGO_PKG_VERSION"))
-        );
-
         time!("plugin::initialize()", 5000, {
             plugin::initialize();
         });
