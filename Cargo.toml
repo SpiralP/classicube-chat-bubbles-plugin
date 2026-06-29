@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = { version = "=1.0.102", features = ["backtrace"] }
+anyhow = { version = "=1.0.103", features = ["backtrace"] }
 backtrace = "=0.3.76"
 bincode = { version = "=2.0.1", features = ["serde"] }
 classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers.git" }
