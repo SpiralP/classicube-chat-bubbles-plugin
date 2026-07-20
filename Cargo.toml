@@ -8,14 +8,14 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-anyhow = { version = "=1.0.103", features = ["backtrace"] }
+anyhow = { version = "=1.0.104", features = ["backtrace"] }
 backtrace = "=0.3.76"
 bincode = { version = "=2.0.1", features = ["serde"] }
 classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers.git" }
 classicube-relay = { git = "https://github.com/SpiralP/rust-classicube-relay.git" }
 classicube-sys = "=6.0.4"
-futures = "=0.3.32"
-serde = { version = "=1.0.228", features = ["derive"] }
+futures = "=0.3.33"
+serde = { version = "=1.0.229", features = ["derive"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 zstd = "=0.13.3"
