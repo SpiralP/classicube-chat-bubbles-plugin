@@ -15,7 +15,7 @@ classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers
 classicube-relay = { git = "https://github.com/SpiralP/rust-classicube-relay.git" }
 classicube-sys = "=6.0.4"
 futures = "=0.3.33"
-serde = { version = "=1.0.228", features = ["derive"] }
+serde = { version = "=1.0.229", features = ["derive"] }
 tracing = "=0.1.44"
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 zstd = "=0.13.3"
