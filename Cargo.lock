@@ -172,7 +172,7 @@ dependencies = [
 [[package]]
 name = "classicube-helpers"
 version = "5.1.0+ClassiCube.1.3.8"
-source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#79f7ee1f32e2db965d103f108902cebd4f92b882"
+source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#c103aba4272c168d65caead75259c06a89f3c139"
 dependencies = [
  "async-dispatcher",
  "classicube-sys",
@@ -186,7 +186,7 @@ dependencies = [
 [[package]]
 name = "classicube-relay"
 version = "0.2.0"
-source = "git+https://github.com/SpiralP/rust-classicube-relay.git#fdee9fae668014b871c749283c50f4049cda9b43"
+source = "git+https://github.com/SpiralP/rust-classicube-relay.git#4bd80f4d6473af58df2ae3ffcfb00a76e6ec731e"
 dependencies = [
  "byteorder",
  "classicube-helpers",
