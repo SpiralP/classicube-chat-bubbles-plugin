@@ -153,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "classicube-chat-bubbles-plugin"
-version = "1.2.7"
+version = "1.2.8"
 dependencies = [
  "anyhow",
  "backtrace",
