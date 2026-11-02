@@ -172,7 +172,7 @@ dependencies = [
 [[package]]
 name = "classicube-helpers"
 version = "5.1.0+ClassiCube.1.3.8"
-source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#35a52232824ac9dbf08f62dee498a2639f68c54c"
+source = "git+https://github.com/SpiralP/rust-classicube-helpers.git#524cfbbf7f784bcc963c71e4b8e7ef5fd7d2e022"
 dependencies = [
  "async-dispatcher",
  "classicube-sys",
@@ -186,7 +186,7 @@ dependencies = [
 [[package]]
 name = "classicube-relay"
 version = "0.2.0"
-source = "git+https://github.com/SpiralP/rust-classicube-relay.git#5cb35ea8b19799b56a59c1077d07e216ffd0384d"
+source = "git+https://github.com/SpiralP/rust-classicube-relay.git#e376b84b61fc1661c2e001605db9cce684700579"
 dependencies = [
  "byteorder",
  "classicube-helpers",
@@ -210,9 +210,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.3"
+version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba106e844045ddc02c20768ac4b0b7cb45f2cc2ecbd833ac9f5dacb183c2055"
+checksum = "5f97d3416d5337d15c4b0d78c8c91df922ca143f57ec20e2d1c188333047ef04"
 dependencies = [
  "cfg-if",
 ]
@@ -434,9 +434,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.34"
+version = "0.4.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "matchers"
