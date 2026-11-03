@@ -9,7 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = { version = "=1.0.104", features = ["backtrace"] }
-backtrace = "=0.3.76"
+backtrace = "=0.3.77"
 bincode = { version = "=2.0.1", features = ["serde"] }
 classicube-helpers = { git = "https://github.com/SpiralP/rust-classicube-helpers.git" }
 classicube-relay = { git = "https://github.com/SpiralP/rust-classicube-relay.git" }
